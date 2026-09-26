@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDRRMO Staff Tracking</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="load-title">PDRRMO Staff Tracking</div>
+  <div class="load-sub">Connecting to database…</div>
+</div>
+
+<!-- Config Banner (shown if no Supabase credentials) -->
+<div id="config-banner">
+  <div class="config-card">
+    <h2>🔧 Setup Required</h2>
+    <p>Enter your Supabase project credentials below. You only need to do this once — they'll be saved in your browser.</p>
+    <div class="form-group">
+      <label class="form-label">Supabase Project URL</label>
+      <input type="text" class="form-input" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Supabase Anon Key</label>
+      <input type="text" class="form-input" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIs...">
+    </div>
+    <button class="config-save-btn" onclick="saveConfig()">Connect to Supabase →</button>
+    <div class="config-note">Find these in your Supabase project → Settings → API</div>
+  </div>
+</div>
+
+<!-- ===== SIDEBAR ===== -->
+<div id="sidebar">
+  <div class="sidebar-header">
+    <div class="org-name">PDRRMO</div>
+    <div class="app-title">Staff<br>Tracking</div>
+    <div class="db-status">
+      <div class="db-dot" id="db-dot"></div>
+      <span id="db-status-text">Connecting…</span>
+    </div>
+    <button class="hamburger-btn" onclick="toggleSidebar()" title="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-item active" onclick="showView('whereabouts', this)">
+      <span class="nav-icon">📍</span><span class="nav-label"> Whereabouts</span>
+    </div>
+    <div class="nav-item" onclick="showView('personnel', this)">
+      <span class="nav-icon">👥</span><span class="nav-label"> Personnel</span>
+    </div>
+    <div class="nav-item" onclick="showView('history', this)">
+      <span class="nav-icon">📋</span><span class="nav-label"> History</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN ===== -->
+<div id="main">
+  <div class="topbar">
+    <div class="topbar-title">PDRRMO <span>Staff Tracking</span></div>
+    <button class="btn-add-entry" onclick="openNewEntryModal()">
+      <span>＋</span> New Entry
+    </button>
+  </div>
+
+  <div id="content-area">
+
+    <!-- WHEREABOUTS VIEW -->
+    <div id="view-whereabouts" class="view active">
+      <div id="entries-container"></div>
+      <div id="wb-empty" class="empty-state" style="display:none">
+        <div class="empty-icon">📋</div>
+        <p>No whereabouts entries yet.<br>Click "New Entry" to get started.</p>
+      </div>
+    </div>
+
+    <!-- PERSONNEL VIEW -->
+    <div id="view-personnel" class="view">
+      <div id="personnel-divisions"></div>
+    </div>
+
+    <!-- HISTORY VIEW -->
+    <div id="view-history" class="view">
+      <div class="section-label">📋 Activity History</div>
+      <div class="history-list" id="history-list">
+        <div class="empty-state">
+          <div class="empty-icon">📜</div>
+          <p>No history yet. Start adding entries!</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- New Entry Modal (with full assignment) -->
+<div class="modal-overlay" id="modal-new-entry">
+  <div class="modal new-entry-modal">
+    <div class="modal-header">
+      <div class="modal-title">📅 New Whereabouts Entry</div>
+      <button class="modal-close" onclick="closeModal('modal-new-entry')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:18px;">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" id="new-entry-date">
+      </div>
+      <div class="form-label" style="margin-bottom:10px;">Assign Personnel</div>
+      <div id="new-entry-columns"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-new-entry')">Cancel</button>
+      <button class="btn-primary" onclick="createEntry()">✔ Confirm &amp; Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Personnel Picker Modal -->
+<div class="modal-overlay" id="modal-picker">
+  <div class="modal picker-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="picker-title">👤 Assign Personnel</div>
+      <button class="modal-close" onclick="closeModal('modal-picker')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="picker-grid" id="picker-grid"></div>
+      <div class="picker-travel-note-section" id="picker-travel-notes">
+        <div class="picker-travel-note-title" id="picker-travel-notes-title">🚗 Official Business Destination</div>
+        <div id="picker-travel-notes-rows"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-picker')">Cancel</button>
+      <button class="btn-primary" onclick="confirmPickerSelection()">Assign Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Personnel Modal -->
+<div class="modal-overlay" id="modal-personnel">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="personnel-modal-title">➕ Add Personnel</div>
+      <button class="modal-close" onclick="closeModal('modal-personnel')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-personnel-id">
+      <div style="margin-bottom:16px;">
+        <div class="form-label">Photo</div>
+        <div class="photo-upload-area" onclick="triggerPhotoUpload()">
+          <div class="photo-preview" id="modal-photo-preview">👤</div>
+          <div class="photo-upload-label">Click to <span>upload photo</span></div>
+          <input type="file" id="photo-file-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)">
+        </div>
+        <div class="photo-actions">
+          <button class="btn-upload" onclick="triggerPhotoUpload()">📷 Upload Photo</button>
+          <button class="btn-remove-photo" onclick="removePhoto()">🗑 Remove Photo</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="personnel-name" placeholder="e.g. MARGARET M. VERDE">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Position / Role</label>
+        <input type="text" class="form-input" id="personnel-role" placeholder="e.g. Senior Planning Officer">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Division</label>
+        <select class="form-input" id="personnel-division" style="cursor:pointer;">
+          <option value="">— Select Division —</option>
+          <option value="ADMIN AND TRAINING DIVISION">Admin and Training Division</option>
+          <option value="RESEARCH AND PLANNING DIVISION">Research and Planning Division</option>
+          <option value="OPERATIONS AND WARNING DIVISION">Operations and Warning Division</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-personnel')">Cancel</button>
+      <button class="btn-primary" onclick="savePersonnel()">Save Personnel</button>
+    </div>
+  </div>
+</div>
+
+<!-- History Whereabouts Modal -->
+
+<div class="modal-overlay" id="modal-history-wb">
+  <div class="modal history-wb-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="history-wb-modal-title">📍 Whereabouts</div>
+      <button class="modal-close" onclick="closeModal('modal-history-wb')">✕</button>
+    </div>
+    <div class="modal-body" id="history-wb-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-history-wb')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+<!-- PDF Print area -->
+<div id="pdf-print-area"></div>
+
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
