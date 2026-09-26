@@ -1,0 +1,3280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDRRMO STAFF DAILY MONITORING</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root {
+  --blue-dark: #4A4A4A;
+  --blue-mid: #6B6B6B;
+  --blue-light: #909090;
+  --blue-pale: #FFF4EE;
+  --yellow: #FF6B2B;
+  --yellow-dark: #E85A1A;
+  --yellow-light: #FFF0E8;
+  --white: #FFFFFF;
+  --gray-100: #F8F8F8;
+  --gray-200: #EBEBEB;
+  --gray-400: #BBBBBB;
+  --gray-600: #888888;
+  --gray-800: #3A3A3A;
+  --shadow: 0 4px 20px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.13);
+  --radius: 12px;
+  --sidebar-width: 200px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--gray-100);
+  color: var(--gray-800);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== LOADING SCREEN ===== */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  gap: 20px;
+}
+#loading-screen .load-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--yellow);
+  letter-spacing: 1px;
+}
+#loading-screen .load-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 600;
+}
+.spinner {
+  width: 40px; height: 40px;
+  border: 4px solid rgba(255,255,255,0.2);
+  border-top-color: var(--yellow);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== CONFIG BANNER ===== */
+#config-banner {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  padding: 24px;
+}
+#config-banner.show { display: flex; }
+.config-card {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.config-card h2 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--blue-dark);
+  margin-bottom: 8px;
+}
+.config-card p {
+  font-size: 13px;
+  color: var(--gray-600);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+.config-card .form-group { margin-bottom: 14px; }
+.config-card .form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+.config-card .form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  color: var(--gray-800);
+  outline: none;
+}
+.config-card .form-input:focus { border-color: var(--blue-mid); }
+.config-save-btn {
+  width: 100%;
+  background: var(--blue-mid);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.config-save-btn:hover { background: var(--blue-dark); }
+.config-note {
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 12px;
+  text-align: center;
+}
+
+/* ===== SIDEBAR ===== */
+#sidebar {
+  width: var(--sidebar-width);
+  background: linear-gradient(180deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 14px 12px 10px;
+  background: rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+/* Hamburger button */
+.hamburger-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s;
+  margin: 8px auto 0;
+}
+.hamburger-btn:hover { background: rgba(255,255,255,0.15); }
+.hamburger-btn span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: rgba(255,255,255,0.85);
+  border-radius: 2px;
+  transition: all 0.25s;
+}
+
+/* Collapsed sidebar */
+#sidebar { transition: width 0.25s ease; }
+#sidebar.collapsed { width: 52px; }
+#sidebar.collapsed .org-name,
+#sidebar.collapsed .app-title,
+#sidebar.collapsed .db-status,
+#sidebar.collapsed .nav-label { display: none; }
+#sidebar.collapsed .nav-item { justify-content: center; padding: 10px 0; }
+#sidebar.collapsed .nav-icon { font-size: 18px; width: auto; }
+#sidebar.collapsed .sidebar-nav { padding: 8px 4px; }
+
+.sidebar-header .org-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.sidebar-header .app-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--yellow);
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  margin-top: 3px;
+}
+
+/* DB status dot */
+.db-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+}
+.db-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #6b7280;
+  flex-shrink: 0;
+}
+.db-dot.connected { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+.db-dot.error { background: #ef4444; }
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 8px;
+  gap: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255,255,255,0.75);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.nav-item.active { background: var(--yellow); color: var(--blue-dark); }
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+/* ===== MAIN CONTENT ===== */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar {
+  background: var(--white);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--gray-200);
+  box-shadow: 0 2px 8px rgba(0,48,135,0.06);
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--blue-dark);
+  letter-spacing: 0.5px;
+}
+
+.topbar-title span { color: var(--yellow-dark); }
+
+.btn-add-entry {
+  background: var(--yellow);
+  color: var(--blue-dark);
+  border: none;
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(255,193,7,0.4);
+}
+.btn-add-entry:hover { background: var(--yellow-dark); transform: translateY(-1px); }
+
+#content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+#content-area::-webkit-scrollbar { width: 6px; }
+#content-area::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+
+/* ===== VIEWS ===== */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ===== WHEREABOUTS VIEW ===== */
+.entry-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1.5px solid var(--gray-200);
+}
+
+.entry-header {
+  background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.entry-date {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: 1px;
+}
+
+.entry-date span { color: var(--yellow); }
+
+.entry-menu-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  transition: background 0.15s;
+}
+.entry-menu-btn:hover { background: rgba(255,255,255,0.25); }
+
+.entry-dropdown {
+  position: absolute;
+  top: 38px; right: 0;
+  background: var(--white);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--gray-200);
+  z-index: 100;
+  min-width: 140px;
+  overflow: hidden;
+  display: none;
+}
+.entry-dropdown.open { display: block; }
+
+.entry-dropdown-item {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-800);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+.entry-dropdown-item:hover { background: var(--gray-100); }
+.entry-dropdown-item.danger { color: #dc2626; }
+.entry-dropdown-item.danger:hover { background: #fef2f2; }
+
+/* Whereabouts Table */
+.wb-table {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr) 1.2fr;
+  border-top: none;
+}
+
+.wb-col {
+  border-right: 2px solid var(--gray-200);
+  min-height: 180px;
+}
+.wb-col:last-child { border-right: none; }
+
+.wb-col-header {
+  background: var(--yellow);
+  padding: 10px 8px;
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--yellow-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wb-col-body {
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  min-height: 140px;
+}
+
+.wb-person-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.wb-person-photo {
+  width: 44px; height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--blue-pale);
+  border: 2px solid var(--blue-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: var(--blue-mid);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.wb-person-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+.wb-person-name {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  max-width: 56px;
+  word-break: break-word;
+}
+
+.wb-remove-btn {
+  position: absolute;
+  top: -5px; right: -5px;
+  width: 18px; height: 18px;
+  background: #dc2626;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.entry-card.edit-mode .wb-remove-btn { display: flex; }
+
+.wb-add-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--blue-pale);
+  border: 2px dashed var(--blue-mid);
+  color: var(--blue-mid);
+  font-size: 22px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.wb-add-btn:hover { background: var(--blue-mid); color: #fff; border-color: var(--blue-mid); }
+
+/* Edit mode banner */
+.edit-mode-banner {
+  display: none;
+  background: var(--yellow-light);
+  border-bottom: 2px solid var(--yellow);
+  padding: 8px 20px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--yellow-dark);
+  align-items: center;
+  gap: 10px;
+}
+.entry-card.edit-mode .edit-mode-banner { display: flex; }
+
+.edit-save-btn {
+  background: var(--blue-mid);
+  color: #fff;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: auto;
+}
+.edit-cancel-btn {
+  background: #e5e7eb;
+  color: var(--gray-800);
+  border: none;
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ===== PERSONNEL VIEW ===== */
+.personnel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.personnel-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+.personnel-card:hover { border-color: var(--blue-light); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+.personnel-card-remove-btn {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 22px; height: 22px;
+  background: #dc2626;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+.personnel-card:hover .personnel-card-remove-btn { opacity: 1; }
+
+.personnel-card-photo {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  background: var(--blue-pale);
+  border: 3px solid var(--blue-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 700; color: var(--blue-mid);
+  overflow: hidden;
+}
+.personnel-card-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+.personnel-card-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.personnel-card-role {
+  font-size: 11px;
+  color: var(--gray-600);
+  margin-top: 3px;
+}
+
+.add-personnel-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 2.5px dashed var(--blue-light);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--blue-mid);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  transition: all 0.2s;
+}
+.add-personnel-card:hover { background: var(--blue-pale); }
+.add-personnel-card .plus { font-size: 32px; }
+
+/* ===== DIVISION SECTIONS ===== */
+.division-section {
+  margin-bottom: 32px;
+}
+.division-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 12px 20px;
+  margin-bottom: 0;
+}
+.division-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--yellow);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.division-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.1);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-left: 10px;
+}
+.btn-add-personnel-div {
+  background: var(--yellow);
+  color: var(--blue-dark);
+  border: none;
+  padding: 7px 16px;
+  border-radius: 7px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-add-personnel-div:hover { background: var(--yellow-dark); transform: translateY(-1px); }
+.division-body {
+  background: var(--white);
+  border: 1.5px solid var(--gray-200);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.division-empty {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--gray-400);
+  font-size: 13px;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* ===== HISTORY VIEW ===== */
+.history-list { display: flex; flex-direction: column; gap: 12px; }
+
+.history-item {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--blue-mid);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.history-item:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+  border-left-color: var(--blue-dark);
+}
+
+.history-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--blue-pale);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.history-content { flex: 1; }
+
+.history-action {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue-dark);
+}
+
+.history-detail {
+  font-size: 12px;
+  color: var(--gray-600);
+  margin-top: 2px;
+}
+
+.history-time {
+  font-size: 11px;
+  color: var(--gray-400);
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* History whereabouts modal */
+.modal.history-wb-modal { max-width: 92vw; width: 820px; }
+.modal.history-wb-modal .modal-body { padding: 14px 16px; max-height: 72vh; overflow-y: auto; }
+
+/* Compact overrides inside the history popup */
+.modal.history-wb-modal .div-wb-label {
+  padding: 5px 12px;
+  font-size: 11px;
+}
+.modal.history-wb-modal .div-wb-col-header {
+  font-size: 10px;
+  padding: 5px 3px;
+}
+.modal.history-wb-modal .div-wb-col-body {
+  padding: 5px 4px;
+  gap: 5px;
+  min-height: 55px;
+  grid-template-columns: 1fr 1fr;
+}
+.modal.history-wb-modal .wb-person-photo {
+  width: 32px; height: 32px;
+  font-size: 10px;
+}
+.modal.history-wb-modal .wb-person-name {
+  font-size: 7px;
+  max-width: 44px;
+}
+.modal.history-wb-modal .wb-travel-note {
+  font-size: 7px;
+  max-width: 50px;
+  padding: 1px 3px;
+}
+.modal.history-wb-modal .div-wb-block {
+  margin-bottom: 0;
+}
+.modal.history-wb-modal .wb-notes-text {
+  font-size: 9px;
+}
+
+/* Date badge in history modal header */
+.history-wb-date-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--yellow);
+  background: rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 3px 10px;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+.history-wb-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr) 1.2fr;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.history-wb-col { border-right: 1.5px solid var(--gray-200); }
+.history-wb-col:last-child { border-right: none; }
+.history-wb-col-header {
+  background: var(--yellow);
+  padding: 7px 4px;
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  border-bottom: 1.5px solid var(--yellow-dark);
+}
+.history-wb-col-body {
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  min-height: 80px;
+}
+.history-wb-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.history-wb-photo {
+  width: 40px; height: 40px;
+  border-radius: 6px;
+  background: var(--blue-pale);
+  border: 1.5px solid var(--blue-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--blue-mid);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.history-wb-photo img { width: 100%; height: 100%; object-fit: cover; }
+.history-wb-name {
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  text-align: center;
+  text-transform: uppercase;
+  max-width: 52px;
+  word-break: break-word;
+}
+.history-item-arrow {
+  font-size: 13px;
+  color: var(--gray-400);
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: center;
+}
+.history-no-entry {
+  font-size: 12px;
+  color: var(--gray-400);
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+}
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--gray-400);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; font-weight: 600; }
+
+/* ===== MODALS ===== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,48,135,0.4);
+  backdrop-filter: blur(3px);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,48,135,0.25);
+  width: 100%;
+  max-width: 460px;
+  overflow: hidden;
+  animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.modal-header {
+  background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.modal-close {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: #fff;
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { background: rgba(255,255,255,0.3); }
+
+.modal-body { padding: 24px; }
+
+/* Personnel picker modal (wider) */
+.modal.picker-modal { max-width: 520px; }
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.picker-grid::-webkit-scrollbar { width: 4px; }
+.picker-grid::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+
+.picker-item {
+  border: 2px solid var(--gray-200);
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+.picker-item:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
+.picker-item.selected { border-color: var(--blue-mid); background: var(--blue-pale); }
+.picker-item.disabled-assigned {
+  opacity: 0.38;
+  cursor: not-allowed;
+  background: var(--gray-100);
+  border-color: var(--gray-200);
+  pointer-events: none;
+}
+.picker-item.disabled-assigned::after {
+  content: attr(data-assigned-to);
+  position: absolute;
+  bottom: 3px;
+  left: 0; right: 0;
+  font-size: 7px;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 3px;
+}
+
+.picker-photo {
+  width: 52px; height: 52px;
+  border-radius: 8px;
+  margin: 0 auto 8px;
+  background: var(--blue-pale);
+  border: 2px solid var(--blue-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: var(--blue-mid);
+  overflow: hidden;
+}
+.picker-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+.picker-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Form fields */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  color: var(--gray-800);
+  transition: border-color 0.15s;
+  outline: none;
+}
+.form-input:focus { border-color: var(--blue-mid); }
+
+/* Photo upload area */
+.photo-upload-area {
+  border: 2px dashed var(--gray-200);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.photo-upload-area:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
+
+.photo-preview {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 10px;
+  background: var(--blue-pale);
+  border: 3px solid var(--blue-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 700; color: var(--blue-mid);
+  overflow: hidden;
+}
+.photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.photo-upload-label {
+  font-size: 12px;
+  color: var(--gray-600);
+  font-weight: 600;
+}
+
+.photo-upload-label span {
+  color: var(--blue-mid);
+  font-weight: 700;
+}
+
+.photo-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.btn-upload {
+  background: var(--blue-pale);
+  color: var(--blue-mid);
+  border: 2px solid var(--blue-mid);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+}
+
+.btn-remove-photo {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 2px solid #dc2626;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 2px solid var(--gray-200);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  background: var(--blue-mid);
+  color: #fff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--blue-dark); }
+
+.btn-secondary {
+  background: var(--gray-100);
+  color: var(--gray-800);
+  border: 2px solid var(--gray-200);
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* New entry modal */
+.modal.new-entry-modal { max-width: 620px; }
+.modal.new-entry-modal .modal-body { max-height: 70vh; overflow-y: auto; }
+.ne-col-section { margin-bottom: 12px; }
+.ne-col-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ne-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ne-picker-item {
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ne-picker-item:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
+.ne-picker-item.selected { border-color: var(--blue-mid); background: var(--blue-pale); }
+.ne-picker-item.selected .ne-check { opacity: 1; }
+.ne-picker-item.disabled-assigned {
+  opacity: 0.38;
+  cursor: not-allowed;
+  background: var(--gray-100);
+  border-color: var(--gray-200);
+  pointer-events: none;
+}
+
+/* Travel note in wb-person-card */
+.wb-travel-note {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--blue-mid);
+  background: var(--blue-pale);
+  border: 1px solid var(--blue-mid);
+  border-radius: 4px;
+  padding: 1px 5px;
+  max-width: 70px;
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.4;
+}
+.wb-travel-note-edit {
+  width: 70px;
+  border: 1.5px solid var(--blue-mid);
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 9px;
+  color: var(--gray-800);
+  background: #fff;
+  outline: none;
+  text-align: center;
+}
+.wb-travel-note-edit:focus { border-color: var(--blue-dark); }
+
+/* New entry travel note input per person */
+.ne-travel-note-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--blue-pale);
+  border-radius: 6px;
+  border: 1px solid var(--gray-200);
+}
+.ne-travel-note-row-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ne-travel-note-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ne-travel-note-person-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  min-width: 80px;
+  text-transform: uppercase;
+}
+.ne-travel-note-input {
+  flex: 1;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px;
+  color: var(--gray-800);
+  outline: none;
+  background: #fff;
+}
+.ne-travel-note-input:focus { border-color: var(--blue-mid); }
+
+/* Picker travel note row */
+.picker-travel-note-section {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--blue-pale);
+  border-radius: 8px;
+  border: 1px solid var(--gray-200);
+  display: none;
+}
+.picker-travel-note-section.visible { display: block; }
+.picker-travel-note-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.picker-travel-note-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.picker-travel-note-row:last-child { margin-bottom: 0; }
+.picker-travel-note-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  min-width: 90px;
+  text-transform: uppercase;
+}
+.picker-travel-note-input {
+  flex: 1;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px;
+  color: var(--gray-800);
+  outline: none;
+}
+.ne-picker-photo {
+  width: 28px; height: 28px;
+  border-radius: 5px;
+  background: var(--blue-pale);
+  border: 1.5px solid var(--blue-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--blue-mid);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ne-picker-photo img { width: 100%; height: 100%; object-fit: cover; }
+.ne-picker-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  text-transform: uppercase;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ne-check {
+  font-size: 11px;
+  color: var(--blue-mid);
+  opacity: 0;
+  transition: opacity 0.1s;
+  flex-shrink: 0;
+}
+
+/* Notes column in whereabouts */
+.wb-notes-body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 80px;
+}
+.wb-notes-text {
+  font-size: 11px;
+  color: var(--gray-800);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  flex: 1;
+}
+.wb-notes-empty {
+  font-size: 10px;
+  color: var(--gray-400);
+  font-style: italic;
+}
+.wb-notes-textarea {
+  width: 100%;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px;
+  color: var(--gray-800);
+  resize: vertical;
+  outline: none;
+  min-height: 80px;
+  background: var(--gray-100);
+}
+.wb-notes-textarea:focus { border-color: var(--blue-mid); background: #fff; }
+
+/* ===== DIVISION WHEREABOUTS INSIDE ENTRY CARD ===== */
+.div-wb-block {
+  margin-bottom: 0;
+  border-bottom: 2px solid var(--gray-200);
+}
+.div-wb-block:last-child { border-bottom: none; }
+
+.div-wb-label {
+  background: linear-gradient(90deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+  padding: 7px 16px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--yellow);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.div-wb-table {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr) 1.4fr;
+}
+
+.div-wb-col {
+  border-right: 1.5px solid var(--gray-200);
+  min-height: 100px;
+}
+.div-wb-col:last-child { border-right: none; }
+
+.div-wb-col-header {
+  background: var(--yellow);
+  padding: 7px 4px;
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  border-bottom: 1.5px solid var(--yellow-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  letter-spacing: 0.3px;
+}
+
+.div-wb-col-body {
+  padding: 8px 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  align-items: start;
+  justify-items: center;
+  min-height: 80px;
+}
+/* Auto-centre lone / pair items inside a 3-col body */
+.div-wb-col-body[style*="1fr 1fr 1fr"] {
+  justify-content: center;
+}
+.div-wb-col-body[style*="1fr 1fr 1fr"] > *:last-child:nth-child(1),
+.div-wb-col-body[style*="1fr 1fr 1fr"] > *:last-child:nth-child(2) {
+  grid-column: auto / span 1;
+}
+/* Centre a single item spanning all */
+.div-wb-col-body[style*="1fr 1fr 1fr"] > *:only-child {
+  grid-column: 2 / 3;
+}
+
+.div-wb-empty-col {
+  font-size: 10px;
+  color: var(--gray-400);
+  font-style: italic;
+  text-align: center;
+  padding-top: 8px;
+}
+
+/* New entry modal — division assignment block */
+.ne-div-block {
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.ne-div-header {
+  background: linear-gradient(90deg, var(--blue-dark), var(--blue-mid));
+  padding: 9px 16px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--yellow);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ne-div-body {
+  padding: 12px 14px;
+  background: var(--white);
+}
+.ne-div-col-row {
+  margin-bottom: 10px;
+}
+.ne-div-col-row:last-child { margin-bottom: 0; }
+
+/* Section label */
+.section-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--blue-dark);
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--blue-dark);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  animation: slideIn 0.3s ease;
+}
+#toast.show { display: flex; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.entry-table-wrap { overflow-x: auto; }
+
+/* PDF print area */
+#pdf-print-area {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  background: #fff;
+  padding: 24px;
+  width: 1100px;
+}
+
+.pdf-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--blue-dark);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.pdf-subtitle {
+  font-size: 13px;
+  color: var(--gray-600);
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* Saving indicator */
+.saving-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.1);
+}
+.saving-badge .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--yellow);
+  animation: pulse 1s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="load-title">PDRRMO STAFF DAILY MONITORING</div>
+  <div class="load-sub">Connecting to database…</div>
+</div>
+
+<!-- Config Banner (shown if no Supabase credentials) -->
+<div id="config-banner">
+  <div class="config-card">
+    <h2>🔧 Setup Required</h2>
+    <p>Enter your Supabase project credentials below. You only need to do this once — they'll be saved in your browser.</p>
+    <div class="form-group">
+      <label class="form-label">Supabase Project URL</label>
+      <input type="text" class="form-input" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Supabase Anon Key</label>
+      <input type="text" class="form-input" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIs...">
+    </div>
+    <button class="config-save-btn" onclick="saveConfig()">Connect to Supabase →</button>
+    <div class="config-note">Find these in your Supabase project → Settings → API</div>
+  </div>
+</div>
+
+<!-- ===== SIDEBAR ===== -->
+<div id="sidebar">
+  <div class="sidebar-header">
+    <div class="org-name">PDRRMO</div>
+    <div class="app-title">Staff Daily<br>Monitoring</div>
+    <div class="db-status">
+      <div class="db-dot" id="db-dot"></div>
+      <span id="db-status-text">Connecting…</span>
+    </div>
+    <button class="hamburger-btn" onclick="toggleSidebar()" title="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-item active" onclick="showView('whereabouts', this)">
+      <span class="nav-icon">📍</span><span class="nav-label"> Whereabouts</span>
+    </div>
+    <div class="nav-item" onclick="showView('personnel', this)">
+      <span class="nav-icon">👥</span><span class="nav-label"> Personnel</span>
+    </div>
+    <div class="nav-item" onclick="showView('history', this)">
+      <span class="nav-icon">📋</span><span class="nav-label"> History</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN ===== -->
+<div id="main">
+  <div class="topbar">
+    <div class="topbar-title">PDRRMO <span>Staff Daily Monitoring</span></div>
+    <button class="btn-add-entry" onclick="openNewEntryModal()">
+      <span>＋</span> New Entry
+    </button>
+  </div>
+
+  <div id="content-area">
+
+    <!-- WHEREABOUTS VIEW -->
+    <div id="view-whereabouts" class="view active">
+      <div id="entries-container"></div>
+      <div id="wb-empty" class="empty-state" style="display:none">
+        <div class="empty-icon">📋</div>
+        <p>No whereabouts entries yet.<br>Click "New Entry" to get started.</p>
+      </div>
+    </div>
+
+    <!-- PERSONNEL VIEW -->
+    <div id="view-personnel" class="view">
+      <div style="padding:0 0 12px 0;">
+        <div style="position:relative;">
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
+          <input
+            type="text"
+            id="personnel-search"
+            placeholder="Search personnel by name or role…"
+            oninput="renderPersonnelGrid()"
+            style="width:100%;box-sizing:border-box;padding:10px 14px 10px 38px;border-radius:10px;border:1.5px solid var(--gray-200);background:var(--bg-card);color:var(--text-primary);font-size:13px;outline:none;transition:border 0.2s;"
+            onfocus="this.style.borderColor='var(--yellow)'"
+            onblur="this.style.borderColor='var(--gray-200)'"
+          >
+        </div>
+      </div>
+      <div id="personnel-divisions"></div>
+    </div>
+
+    <!-- HISTORY VIEW -->
+    <div id="view-history" class="view">
+      <div class="section-label">📍 Whereabouts History</div>
+      <div style="padding:0 0 12px 0;">
+        <div style="position:relative;">
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
+          <input
+            type="text"
+            id="history-search"
+            placeholder="Search by date or staff name…"
+            oninput="renderHistory()"
+            style="width:100%;box-sizing:border-box;padding:10px 14px 10px 38px;border-radius:10px;border:1.5px solid var(--gray-200);background:var(--bg-card);color:var(--text-primary);font-size:13px;outline:none;transition:border 0.2s;"
+            onfocus="this.style.borderColor='var(--yellow)'"
+            onblur="this.style.borderColor='var(--gray-200)'"
+          >
+        </div>
+      </div>
+      <div class="history-list" id="history-list">
+        <div class="empty-state">
+          <div class="empty-icon">📜</div>
+          <p>No history yet. Start adding entries!</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- New Entry Modal (with full assignment) -->
+<div class="modal-overlay" id="modal-new-entry">
+  <div class="modal new-entry-modal">
+    <div class="modal-header">
+      <div class="modal-title">📅 New Whereabouts Entry</div>
+      <button class="modal-close" onclick="closeModal('modal-new-entry')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:18px;">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" id="new-entry-date">
+      </div>
+      <div class="form-label" style="margin-bottom:10px;">Assign Personnel</div>
+      <div id="new-entry-columns"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-new-entry')">Cancel</button>
+      <button class="btn-primary" onclick="createEntry()">✔ Confirm &amp; Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Personnel Picker Modal -->
+<div class="modal-overlay" id="modal-picker">
+  <div class="modal picker-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="picker-title">👤 Assign Personnel</div>
+      <button class="modal-close" onclick="closeModal('modal-picker')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="picker-grid" id="picker-grid"></div>
+      <div class="picker-travel-note-section" id="picker-travel-notes">
+        <div class="picker-travel-note-title" id="picker-travel-notes-title">🚗 Official Business Destination</div>
+        <div id="picker-travel-notes-rows"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-picker')">Cancel</button>
+      <button class="btn-primary" onclick="confirmPickerSelection()">Assign Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Personnel Modal -->
+<div class="modal-overlay" id="modal-personnel">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="personnel-modal-title">➕ Add Personnel</div>
+      <button class="modal-close" onclick="closeModal('modal-personnel')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-personnel-id">
+      <div style="margin-bottom:16px;">
+        <div class="form-label">Photo</div>
+        <div class="photo-upload-area" onclick="triggerPhotoUpload()">
+          <div class="photo-preview" id="modal-photo-preview">👤</div>
+          <div class="photo-upload-label">Click to <span>upload photo</span></div>
+          <input type="file" id="photo-file-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)">
+        </div>
+        <div class="photo-actions">
+          <button class="btn-upload" onclick="triggerPhotoUpload()">📷 Upload Photo</button>
+          <button class="btn-remove-photo" onclick="removePhoto()">🗑 Remove Photo</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="personnel-name" placeholder="e.g. MARGARET M. VERDE">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Position / Role</label>
+        <input type="text" class="form-input" id="personnel-role" placeholder="e.g. Senior Planning Officer">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Division</label>
+        <select class="form-input" id="personnel-division" style="cursor:pointer;">
+          <option value="">— Select Division —</option>
+          <option value="ADMIN AND TRAINING DIVISION">Admin and Training Division</option>
+          <option value="RESEARCH AND PLANNING DIVISION">Research and Planning Division</option>
+          <option value="OPERATIONS AND WARNING DIVISION">Operations and Warning Division</option>
+          <option value="OPD">OPD</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-personnel')">Cancel</button>
+      <button class="btn-primary" onclick="savePersonnel()">Save Personnel</button>
+    </div>
+  </div>
+</div>
+
+<!-- History Whereabouts Modal -->
+
+<div class="modal-overlay" id="modal-history-wb">
+  <div class="modal history-wb-modal">
+    <div class="modal-header" style="flex-direction:column;align-items:flex-start;gap:2px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        <div class="modal-title">📍 Daily Whereabouts</div>
+        <button class="modal-close" onclick="closeModal('modal-history-wb')">✕</button>
+      </div>
+      <div class="history-wb-date-badge" id="history-wb-modal-date"></div>
+    </div>
+    <div class="modal-body" id="history-wb-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-history-wb')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+<!-- PDF Print area -->
+<div id="pdf-print-area"></div>
+
+<script>
+// ===== SUPABASE CONFIG =====
+let sbClient = null;
+
+const SUPABASE_URL = 'https://aygzyruwfocpecporaxz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5Z3p5cnV3Zm9jcGVjcG9yYXh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTExMzMsImV4cCI6MjA5MjQ2NzEzM30.jmoB0Foy16v6MfMFAtZJA6mC3p4Ij_gJiADbBi5G7R0';
+
+function saveConfig() {}
+
+async function initSupabase() {
+  try {
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { error } = await sbClient.from('personnel').select('id').limit(1);
+    if (error && error.code !== 'PGRST116') throw error;
+    setDbStatus(true);
+    await loadAllData();
+    setupRealtime();
+  } catch (e) {
+    console.error(e);
+    setDbStatus(false);
+    showToast('Database connection failed: ' + e.message, 'X');
+  } finally {
+    document.getElementById('loading-screen').style.display = 'none';
+  }
+}
+
+function setDbStatus(ok) {
+  const dot = document.getElementById('db-dot');
+  const txt = document.getElementById('db-status-text');
+  dot.className = 'db-dot ' + (ok ? 'connected' : 'error');
+  txt.textContent = ok ? 'Connected' : 'Disconnected';
+}
+
+// ===== STATE =====
+let state = {
+  personnel: [],
+  entries: [],
+  history: [],
+};
+
+const COLUMNS = [
+  { key: 'office',   label: 'OFFICE',            icon: '🏢', threeCol: true  },
+  { key: 'capitol',  label: 'CAPITOL',            icon: '🏛️', threeCol: false },
+  { key: 'travel',   label: 'OFFICIAL BUSINESS',  icon: '🚗', threeCol: true  },
+  { key: 'sl',       label: 'LEAVE',              icon: '📋', threeCol: false },
+  { key: 'vl',       label: 'OFF DUTY',           icon: '🌙', threeCol: true  },
+];
+const NOTES_COL = { key: 'others', label: 'OTHERS / NOTES', icon: '📌' };
+
+let currentPickerCallback = null;
+let editingEntrySnapshot = null;
+let modalPhotoData = null;
+let editingPersonnelId = null;
+
+// ===== LOAD DATA FROM SUPABASE =====
+async function loadAllData(silent = false) {
+  try {
+    const [pRes, eRes, hRes] = await Promise.all([
+      sbClient.from('personnel').select('*').order('created_at', { ascending: true }),
+      sbClient.from('entries').select('*').order('date', { ascending: false }),
+      sbClient.from('history').select('*').order('created_at', { ascending: false }).limit(100),
+    ]);
+    if (pRes.error) throw pRes.error;
+    if (eRes.error) throw eRes.error;
+    if (hRes.error) throw hRes.error;
+
+    state.personnel = pRes.data || [];
+    // Preserve editMode for any entry currently being edited
+    const prevEditModes = {};
+    state.entries.forEach(e => { if (e.editMode) prevEditModes[e.id] = true; });
+
+    state.entries = (eRes.data || []).map(e => ({
+      ...e,
+      columns: {
+        office: [], capitol: [], travel: [], sl: [], vl: [],
+        ...e.columns,
+        // Normalize others: always a string
+        others: typeof e.columns?.others === 'string' ? e.columns.others : '',
+        // Normalize travelNotes: always an object
+        travelNotes: (e.columns?.travelNotes && typeof e.columns.travelNotes === 'object') ? e.columns.travelNotes : {},
+        leaveNotes:  (e.columns?.leaveNotes  && typeof e.columns.leaveNotes  === 'object') ? e.columns.leaveNotes  : {},
+        // Normalize per-division notes
+        notes_admin: e.columns?.notes_admin || '',
+        notes_research: e.columns?.notes_research || '',
+        notes_operations: e.columns?.notes_operations || '',
+        notes_opd: e.columns?.notes_opd || '',
+      },
+      editMode: prevEditModes[e.id] || false,
+    }));
+    state.history = hRes.data || [];
+
+    // Seed sample OPD personnel if none exist in OPD division
+    const hasOPD = state.personnel.some(p => matchDivision(p.division) === 'OPD');
+    if (!hasOPD) {
+      const sampleOPD = {
+        name: 'JUAN D. DELA CRUZ',
+        role: 'OPD Officer',
+        division: 'OPD',
+        photo: null,
+      };
+      const { data: newP, error: seedErr } = await sbClient.from('personnel').insert([sampleOPD]).select().single();
+      if (!seedErr && newP) state.personnel.push(newP);
+    }
+
+    renderEntries();
+    renderHistory();
+    if (!silent) console.log('Data loaded.');
+  } catch(e) {
+    console.error(e);
+    if (!silent) showToast('Failed to load data: ' + e.message, '❌');
+  }
+}
+
+// ===== REALTIME AUTO-REFRESH =====
+function setupRealtime() {
+  sbClient
+    .channel('db-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, () => loadAllData(true))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel' }, () => loadAllData(true))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'history' }, () => loadAllData(true))
+    .subscribe();
+}
+
+// ===== UTILS =====
+function uid() { return '_' + Math.random().toString(36).substr(2, 9); }
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+}
+
+function initials(name) {
+  return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function showToast(msg, icon = '✅') {
+  const t = document.getElementById('toast');
+  t.innerHTML = `<span>${icon}</span> ${msg}`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+async function addHistory(action, detail, icon = '📝', entryId = null) {
+  const rec = { action, detail, icon, entry_id: entryId, created_at: new Date().toISOString() };
+  state.history.unshift(rec);
+  renderHistory();
+  if (sbClient) {
+    const { error } = await sbClient.from('history').insert([rec]);
+    if (error) console.error('History insert error:', error);
+  }
+}
+
+// ===== SIDEBAR TOGGLE =====
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// ===== VIEWS =====
+function showView(name, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  if (name === 'personnel') renderPersonnelGrid();
+  if (name === 'history') renderHistory();
+}
+
+// ===== MODALS =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// ===== NEW ENTRY =====
+function openNewEntryModal() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('new-entry-date').value = today;
+  renderNewEntryColumns();
+  openModal('modal-new-entry');
+}
+
+function renderNewEntryColumns() {
+  const container = document.getElementById('new-entry-columns');
+  container.innerHTML = '';
+
+  // Build disabled map across all divisions/cols
+  function getAssignedMap() {
+    const map = {};
+    DIVISIONS.forEach(div => {
+      COLUMNS.forEach(col => {
+        document.querySelectorAll(`#ne-${div.key}-${col.key} .ne-picker-item.selected`).forEach(el => {
+          map[el.dataset.pid] = col.label;
+        });
+      });
+    });
+    return map;
+  }
+
+  function refreshAllDisabled() {
+    const assignedMap = getAssignedMap();
+    DIVISIONS.forEach(div => {
+      COLUMNS.forEach(col => {
+        document.querySelectorAll(`#ne-${div.key}-${col.key} .ne-picker-item`).forEach(el => {
+          const pid = el.dataset.pid;
+          const isSelected = el.classList.contains('selected');
+          if (!isSelected && assignedMap[pid]) {
+            el.classList.add('disabled-assigned');
+            el.title = `Already in ${assignedMap[pid]}`;
+          } else {
+            el.classList.remove('disabled-assigned');
+            el.title = '';
+          }
+        });
+      });
+    });
+    renderAllNewEntryTravelNotes();
+  }
+
+  function renderAllNewEntryTravelNotes() {
+    DIVISIONS.forEach(div => {
+      // Travel notes
+      const section = document.getElementById(`ne-travel-${div.key}`);
+      const rowsDiv = document.getElementById(`ne-travel-rows-${div.key}`);
+      if (section && rowsDiv) {
+        const selected = Array.from(document.querySelectorAll(`#ne-${div.key}-travel .ne-picker-item.selected`));
+        if (selected.length === 0) { section.style.display = 'none'; }
+        else {
+          section.style.display = 'block';
+          const existing = {};
+          rowsDiv.querySelectorAll('.ne-travel-note-input').forEach(inp => { existing[inp.dataset.pid] = inp.value; });
+          rowsDiv.innerHTML = '';
+          selected.forEach(el => {
+            const pid = el.dataset.pid;
+            const p = state.personnel.find(x => x.id === pid);
+            if (!p) return;
+            const row = document.createElement('div');
+            row.className = 'ne-travel-note-person';
+            row.innerHTML = `
+              <div class="ne-travel-note-person-name">${p.name}</div>
+              <input class="ne-travel-note-input" type="text" data-pid="${pid}" placeholder="Enter destination…" value="${existing[pid] || ''}">
+            `;
+            rowsDiv.appendChild(row);
+          });
+        }
+      }
+
+      // Leave type notes
+      const leaveSec = document.getElementById(`ne-leave-${div.key}`);
+      const leaveRowsDiv = document.getElementById(`ne-leave-rows-${div.key}`);
+      if (leaveSec && leaveRowsDiv) {
+        const slSelected = Array.from(document.querySelectorAll(`#ne-${div.key}-sl .ne-picker-item.selected`));
+        if (slSelected.length === 0) { leaveSec.style.display = 'none'; }
+        else {
+          leaveSec.style.display = 'block';
+          const existingLeave = {};
+          leaveRowsDiv.querySelectorAll('.ne-leave-type-input').forEach(inp => { existingLeave[inp.dataset.pid] = inp.value; });
+          leaveRowsDiv.innerHTML = '';
+          slSelected.forEach(el => {
+            const pid = el.dataset.pid;
+            const p = state.personnel.find(x => x.id === pid);
+            if (!p) return;
+            const row = document.createElement('div');
+            row.className = 'ne-travel-note-person';
+            row.innerHTML = `
+              <div class="ne-travel-note-person-name">${p.name}</div>
+              <input class="ne-leave-type-input ne-travel-note-input" type="text" data-pid="${pid}" placeholder="Enter leave type…" value="${existingLeave[pid] || ''}">
+            `;
+            leaveRowsDiv.appendChild(row);
+          });
+        }
+      }
+    });
+  }
+
+  DIVISIONS.forEach(div => {
+    const divPersonnel = state.personnel.filter(p => matchDivision(p.division) === div.label);
+
+    const block = document.createElement('div');
+    block.className = 'ne-div-block';
+
+    const header = document.createElement('div');
+    header.className = 'ne-div-header';
+    header.innerHTML = `<span>${div.icon}</span> ${div.label}`;
+    block.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'ne-div-body';
+
+    if (divPersonnel.length === 0) {
+      body.innerHTML = `<div style="font-size:12px;color:var(--gray-400);font-style:italic;padding:4px 0;">No personnel assigned to this division yet.</div>`;
+      block.appendChild(body);
+      container.appendChild(block);
+      return;
+    }
+
+    COLUMNS.forEach(col => {
+      const colRow = document.createElement('div');
+      colRow.className = 'ne-div-col-row';
+
+      const label = document.createElement('div');
+      label.className = 'ne-col-label';
+      label.innerHTML = `${col.icon} ${col.label}`;
+      colRow.appendChild(label);
+
+      const grid = document.createElement('div');
+      grid.className = 'ne-picker-grid';
+      grid.id = `ne-${div.key}-${col.key}`;
+
+      divPersonnel.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'ne-picker-item';
+        item.dataset.pid = p.id;
+        const photoHTML = p.photo
+          ? `<div class="ne-picker-photo"><img src="${p.photo}" alt="${p.name}"></div>`
+          : `<div class="ne-picker-photo">${initials(p.name)}</div>`;
+        item.innerHTML = `${photoHTML}<div class="ne-picker-name">${p.name}</div><span class="ne-check">✔</span>`;
+        item.onclick = () => {
+          item.classList.toggle('selected');
+          refreshAllDisabled();
+        };
+        grid.appendChild(item);
+      });
+
+      colRow.appendChild(grid);
+
+      // Travel notes row for this division
+      if (col.key === 'travel') {
+        const travelSec = document.createElement('div');
+        travelSec.className = 'ne-travel-note-row';
+        travelSec.id = `ne-travel-${div.key}`;
+        travelSec.style.display = 'none';
+        travelSec.innerHTML = `<div class="ne-travel-note-row-title">✈️ Travel Destination per Person</div><div id="ne-travel-rows-${div.key}"></div>`;
+        colRow.appendChild(travelSec);
+      }
+
+      // Leave type input row for this division
+      if (col.key === 'sl') {
+        const leaveSec = document.createElement('div');
+        leaveSec.className = 'ne-travel-note-row';
+        leaveSec.id = `ne-leave-${div.key}`;
+        leaveSec.style.display = 'none';
+        leaveSec.innerHTML = `<div class="ne-travel-note-row-title">📋 Leave Type per Person</div><div id="ne-leave-rows-${div.key}"></div>`;
+        colRow.appendChild(leaveSec);
+      }
+
+      body.appendChild(colRow);
+    });
+
+    // Division notes field
+    const divNotesRow = document.createElement('div');
+    divNotesRow.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px dashed var(--gray-200);';
+    divNotesRow.innerHTML = `
+      <div class="ne-col-label" style="margin-bottom:4px;">📌 NOTES</div>
+      <textarea class="form-input" id="ne-notes-${div.key}" rows="2"
+        placeholder="Notes for ${div.label}…"
+        style="resize:vertical;font-family:'Nunito',sans-serif;font-size:12px;min-height:44px;"></textarea>
+    `;
+    body.appendChild(divNotesRow);
+
+    block.appendChild(body);
+    container.appendChild(block);
+  });
+}
+
+async function createEntry() {
+  const dateVal = document.getElementById('new-entry-date').value;
+  if (!dateVal) { showToast('Please select a date.', '⚠️'); return; }
+
+  const columns = { office: [], capitol: [], travel: [], sl: [], vl: [] };
+
+  // Gather from division-based grids
+  DIVISIONS.forEach(div => {
+    COLUMNS.forEach(col => {
+      const grid = document.getElementById(`ne-${div.key}-${col.key}`);
+      if (!grid) return;
+      grid.querySelectorAll('.ne-picker-item.selected').forEach(el => {
+        if (!columns[col.key].includes(el.dataset.pid))
+          columns[col.key].push(el.dataset.pid);
+      });
+    });
+  });
+
+  // Travel notes per person
+  const travelNotes = {};
+  DIVISIONS.forEach(div => {
+    const rowsDiv = document.getElementById(`ne-travel-rows-${div.key}`);
+    if (!rowsDiv) return;
+    rowsDiv.querySelectorAll('.ne-travel-note-input').forEach(inp => {
+      if (inp.value.trim()) travelNotes[inp.dataset.pid] = inp.value.trim();
+    });
+  });
+  columns.travelNotes = travelNotes;
+
+  // Leave type notes per person
+  const leaveNotes = {};
+  DIVISIONS.forEach(div => {
+    const leaveRowsDiv = document.getElementById(`ne-leave-rows-${div.key}`);
+    if (!leaveRowsDiv) return;
+    leaveRowsDiv.querySelectorAll('.ne-leave-type-input').forEach(inp => {
+      if (inp.value.trim()) leaveNotes[inp.dataset.pid] = inp.value.trim();
+    });
+  });
+  columns.leaveNotes = leaveNotes;
+  // Gather per-division notes
+  DIVISIONS.forEach(div => {
+    const ta = document.getElementById(`ne-notes-${div.key}`);
+    if (ta && ta.value.trim()) columns[`notes_${div.key}`] = ta.value.trim();
+  });
+
+  const entry = { date: dateVal, columns };
+
+  try {
+    const { data, error } = await sbClient.from('entries').insert([entry]).select().single();
+    if (error) throw error;
+    const newEntry = { ...data, editMode: false };
+    state.entries.unshift(newEntry);
+    closeModal('modal-new-entry');
+    renderEntries();
+    addHistory('New entry created', fmtDate(dateVal), '📅', data.id);
+    showToast('Entry created for ' + fmtDate(dateVal));
+  } catch(e) {
+    showToast('Error creating entry: ' + e.message, '❌');
+  }
+}
+
+// ===== ENTRIES RENDER =====
+function renderEntries() {
+  const container = document.getElementById('entries-container');
+  const empty = document.getElementById('wb-empty');
+
+  if (state.entries.length === 0) {
+    container.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  container.innerHTML = '';
+  state.entries.forEach(entry => container.appendChild(buildEntryCard(entry)));
+}
+
+function buildEntryCard(entry) {
+  const card = document.createElement('div');
+  card.className = 'entry-card' + (entry.editMode ? ' edit-mode' : '');
+  card.id = 'entry-' + entry.id;
+
+  const d = fmtDate(entry.date);
+  const parts = d.split(' ');
+  const dateFmt = parts.length >= 3
+    ? `${parts[0]} <span>${parts[1]}</span> ${parts[2]}`
+    : d;
+
+  // Build entry header
+  card.innerHTML = `
+    <div class="entry-header">
+      <div class="entry-date">${dateFmt}</div>
+      <div style="position:relative">
+        <button class="entry-menu-btn" onclick="toggleEntryMenu('${entry.id}', event)">⋮</button>
+        <div class="entry-dropdown" id="dropdown-${entry.id}">
+          <div class="entry-dropdown-item" onclick="editEntry('${entry.id}')">✏️ Edit</div>
+          <div class="entry-dropdown-item" onclick="downloadEntryPDF('${entry.id}')">⬇️ Download PDF</div>
+          <div class="entry-dropdown-item danger" onclick="removeEntry('${entry.id}')">🗑 Remove</div>
+        </div>
+      </div>
+    </div>
+    <div class="edit-mode-banner">
+      ✏️ Editing mode — make your changes below &nbsp;|&nbsp; <span style="opacity:0.75;font-weight:600;">Press Enter to save</span>
+      <button class="edit-cancel-btn" onclick="cancelEdit('${entry.id}')">Cancel</button>
+      <button class="edit-save-btn" onclick="saveEdit('${entry.id}')">Save Changes</button>
+    </div>
+    <div class="entry-table-wrap" id="wb-table-${entry.id}"></div>
+  `;
+
+  // Build the per-division whereabouts tables
+  const tableWrap = card.querySelector(`#wb-table-${entry.id}`);
+  DIVISIONS.forEach(div => {
+    const divPersonnel = state.personnel.filter(p => matchDivision(p.division) === div.label);
+
+    const block = document.createElement('div');
+    block.className = 'div-wb-block';
+
+    // Division label row
+    const labelRow = document.createElement('div');
+    labelRow.className = 'div-wb-label';
+    labelRow.innerHTML = `<span>${div.icon}</span> ${div.label}`;
+    block.appendChild(labelRow);
+
+    // Column headers + bodies
+    const table = document.createElement('div');
+    table.className = 'div-wb-table';
+
+    COLUMNS.forEach(col => {
+      const colEl = document.createElement('div');
+      colEl.className = 'div-wb-col';
+
+      const header = document.createElement('div');
+      header.className = 'div-wb-col-header';
+      header.innerHTML = `${col.icon} ${col.label}`;
+      colEl.appendChild(header);
+
+      const body = document.createElement('div');
+      body.className = 'div-wb-col-body';
+      if (col.threeCol) body.style.gridTemplateColumns = '1fr 1fr 1fr';
+      body.id = `col-${entry.id}-${div.key}-${col.key}`;
+
+      // Only show personnel from this division who are in this column
+      const colIds = entry.columns[col.key] || [];
+      const divIds = divPersonnel.map(p => p.id);
+      const showIds = colIds.filter(id => divIds.includes(id));
+      const travelNotes = entry.columns.travelNotes || {};
+
+      if (showIds.length === 0 && !entry.editMode) {
+        const empty = document.createElement('div');
+        empty.className = 'div-wb-empty-col';
+        empty.style.gridColumn = '1 / -1';
+        empty.textContent = '—';
+        body.appendChild(empty);
+      }
+
+      showIds.forEach(pid => {
+        const p = state.personnel.find(x => x.id === pid);
+        if (!p) return;
+        const card2 = document.createElement('div');
+        card2.className = 'wb-person-card';
+        const photoHTML = p.photo
+          ? `<div class="wb-person-photo"><img src="${p.photo}" alt="${p.name}"></div>`
+          : `<div class="wb-person-photo">${initials(p.name)}</div>`;
+
+        let travelNoteHTML = '';
+        if (col.key === 'travel' || col.key === 'sl') {
+          const notesStore = col.key === 'travel' ? travelNotes : (entry.columns.leaveNotes || {});
+          const placeholder = col.key === 'travel' ? 'Destination…' : 'Leave type (e.g. Sick, Vacation…)';
+          const noteIcon = col.key === 'travel' ? '🚗' : '📋';
+          if (entry.editMode) {
+            const noteVal = (notesStore[pid] || '').replace(/"/g, '&quot;');
+            travelNoteHTML = `<input class="wb-travel-note-edit" type="text" data-entry="${entry.id}" data-pid="${pid}" data-col="${col.key}" placeholder="${placeholder}" value="${noteVal}" oninput="updateColNote('${entry.id}','${col.key}','${pid}',this.value)">`;
+          } else {
+            const note = notesStore[pid];
+            if (note) travelNoteHTML = `<div class="wb-travel-note" title="${note}">${noteIcon} ${note}</div>`;
+          }
+        }
+
+        card2.innerHTML = `
+          ${photoHTML}
+          <div class="wb-person-name">${p.name}</div>
+          ${travelNoteHTML}
+          <button class="wb-remove-btn" onclick="removePersonFromColumn('${entry.id}','${col.key}','${pid}')">✕</button>
+        `;
+        body.appendChild(card2);
+      });
+
+      // Add person button (edit mode only)
+      if (entry.editMode) {
+        const addBtn = document.createElement('button');
+        addBtn.className = 'wb-add-btn';
+        addBtn.title = `Add ${div.label} personnel to ${col.label}`;
+        addBtn.textContent = '+';
+        addBtn.onclick = () => openPickerForColumnDivision(entry.id, col.key, div.key);
+        addBtn.style.gridColumn = '1 / -1';
+        body.appendChild(addBtn);
+      }
+
+      colEl.appendChild(body);
+      table.appendChild(colEl);
+    });
+
+    // Notes column for this division
+    const notesColEl = document.createElement('div');
+    notesColEl.className = 'div-wb-col';
+    const notesHeader = document.createElement('div');
+    notesHeader.className = 'div-wb-col-header';
+    notesHeader.innerHTML = `📌 NOTES`;
+    notesColEl.appendChild(notesHeader);
+    const notesBody = document.createElement('div');
+    notesBody.className = 'div-wb-col-body';
+    notesBody.style.display = 'block';
+    notesBody.style.padding = '8px';
+    const divNotesKey = `notes_${div.key}`;
+    const divNotesVal = entry.columns[divNotesKey] || '';
+    if (entry.editMode) {
+      const ta = document.createElement('textarea');
+      ta.className = 'wb-notes-textarea';
+      ta.id = `divnotes-${entry.id}-${div.key}`;
+      ta.placeholder = 'Division notes…';
+      ta.style.minHeight = '60px';
+      ta.value = divNotesVal;
+      notesBody.appendChild(ta);
+    } else {
+      notesBody.innerHTML = divNotesVal
+        ? `<div class="wb-notes-text" style="font-size:10px;">${divNotesVal}</div>`
+        : `<div class="div-wb-empty-col">—</div>`;
+    }
+    notesColEl.appendChild(notesBody);
+    table.appendChild(notesColEl);
+
+    block.appendChild(table);
+    tableWrap.appendChild(block);
+  });
+
+  return card;
+}
+
+function updateTravelNote(entryId, pid, value) { updateColNote(entryId, 'travel', pid, value); }
+function updateColNote(entryId, colKey, pid, value) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) return;
+  const storeKey = colKey === 'sl' ? 'leaveNotes' : 'travelNotes';
+  if (!entry.columns[storeKey]) entry.columns[storeKey] = {};
+  entry.columns[storeKey][pid] = value;
+}
+
+// ===== DROPDOWN =====
+function toggleEntryMenu(id, e) {
+  e.stopPropagation();
+  const dd = document.getElementById('dropdown-' + id);
+  const isOpen = dd.classList.contains('open');
+  document.querySelectorAll('.entry-dropdown').forEach(d => d.classList.remove('open'));
+  if (!isOpen) dd.classList.add('open');
+}
+document.addEventListener('click', () => {
+  document.querySelectorAll('.entry-dropdown').forEach(d => d.classList.remove('open'));
+});
+
+// ===== EDIT ENTRY =====
+function editEntry(id) {
+  document.querySelectorAll('.entry-dropdown').forEach(d => d.classList.remove('open'));
+  const entry = state.entries.find(e => e.id === id);
+  if (!entry) return;
+  editingEntrySnapshot = JSON.parse(JSON.stringify(entry.columns));
+  entry.editMode = true;
+  renderEntries();
+}
+
+// ── Enter key → Save ──
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Enter') return;
+  // Don't trigger if a modal is open
+  if (document.querySelector('.modal-overlay.open')) return;
+  // Don't trigger if the user is typing in a textarea (let them newline freely)
+  if (e.target.tagName === 'TEXTAREA') return;
+  // Find the entry currently in edit mode
+  const editingEntry = state.entries.find(en => en.editMode);
+  if (!editingEntry) return;
+  e.preventDefault();
+  saveEdit(editingEntry.id);
+});
+
+function cancelEdit(id) {
+  const entry = state.entries.find(e => e.id === id);
+  if (!entry) return;
+  if (editingEntrySnapshot) entry.columns = editingEntrySnapshot;
+  entry.editMode = false;
+  editingEntrySnapshot = null;
+  renderEntries();
+  showToast('Edit cancelled.');
+}
+
+async function saveEdit(id) {
+  const entry = state.entries.find(e => e.id === id);
+  if (!entry) return;
+  // Capture per-division notes
+  DIVISIONS.forEach(div => {
+    const ta = document.getElementById(`divnotes-${id}-${div.key}`);
+    if (ta) entry.columns[`notes_${div.key}`] = ta.value.trim();
+  });
+  // Capture travel + leave notes from edit inputs
+  const travelNotes = entry.columns.travelNotes || {};
+  const leaveNotes  = entry.columns.leaveNotes  || {};
+  document.querySelectorAll(`.wb-travel-note-edit[data-entry="${id}"]`).forEach(inp => {
+    if (inp.dataset.col === 'sl') leaveNotes[inp.dataset.pid] = inp.value.trim();
+    else travelNotes[inp.dataset.pid] = inp.value.trim();
+  });
+  entry.columns.travelNotes = travelNotes;
+  entry.columns.leaveNotes  = leaveNotes;
+  try {
+    const { error } = await sbClient.from('entries').update({ columns: entry.columns }).eq('id', id);
+    if (error) throw error;
+    entry.editMode = false;
+    editingEntrySnapshot = null;
+    renderEntries();
+    showToast('Entry saved!');
+  } catch(e) {
+    showToast('Error saving: ' + e.message, '❌');
+  }
+}
+
+async function removeEntry(id) {
+  document.querySelectorAll('.entry-dropdown').forEach(d => d.classList.remove('open'));
+  if (!confirm('Remove this entry?')) return;
+  try {
+    // Delete history for this entry
+    await sbClient.from('history').delete().eq('entry_id', id);
+    const { error } = await sbClient.from('entries').delete().eq('id', id);
+    if (error) throw error;
+    state.entries = state.entries.filter(e => e.id !== id);
+    state.history = state.history.filter(h => h.entry_id !== id);
+    renderEntries();
+    renderHistory();
+    showToast('Entry removed.');
+  } catch(e) {
+    showToast('Error removing entry: ' + e.message, '❌');
+  }
+}
+
+function removePersonFromColumn(entryId, colKey, pid) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) return;
+  entry.columns[colKey] = (entry.columns[colKey] || []).filter(x => x !== pid);
+  renderEntries();
+}
+
+// ===== PICKER =====
+function openPickerForColumn(entryId, colKey) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) return;
+  if (!entry.editMode) {
+    editingEntrySnapshot = JSON.parse(JSON.stringify(entry.columns));
+    entry.editMode = true;
+    renderEntries();
+  }
+
+  const col = COLUMNS.find(c => c.key === colKey);
+  document.getElementById('picker-title').textContent = `${col.icon} Assign to ${col.label}`;
+
+  const assigned = entry.columns[colKey] || [];
+  // Build a map of pid -> colLabel for all OTHER columns
+  const assignedElsewhere = {};
+  COLUMNS.forEach(c => {
+    if (c.key === colKey) return;
+    (entry.columns[c.key] || []).forEach(pid => {
+      assignedElsewhere[pid] = c.label;
+    });
+  });
+
+  const grid = document.getElementById('picker-grid');
+  grid.innerHTML = '';
+
+  state.personnel.forEach(p => {
+    const isSelected = assigned.includes(p.id);
+    const isElsewhere = !isSelected && assignedElsewhere[p.id];
+    const div = document.createElement('div');
+    div.className = 'picker-item' + (isSelected ? ' selected' : '') + (isElsewhere ? ' disabled-assigned' : '');
+    div.dataset.pid = p.id;
+    if (isElsewhere) div.dataset.assignedTo = assignedElsewhere[p.id];
+    const photoHTML = p.photo
+      ? `<div class="picker-photo"><img src="${p.photo}" alt="${p.name}"></div>`
+      : `<div class="picker-photo">${initials(p.name)}</div>`;
+    div.innerHTML = `${photoHTML}<div class="picker-name">${p.name}</div>`;
+    if (!isElsewhere) {
+      div.onclick = () => {
+        div.classList.toggle('selected');
+        if (colKey === 'travel' || colKey === 'sl') refreshPickerTravelNotes(entry);
+      };
+    }
+    grid.appendChild(div);
+  });
+
+  // Travel notes section
+  const travelSection = document.getElementById('picker-travel-notes');
+  if (colKey === 'travel' || colKey === 'sl') {
+    refreshPickerTravelNotes(entry);
+  } else {
+    travelSection.classList.remove('visible');
+  }
+
+  currentPickerCallback = (selectedIds, notes, isSL) => {
+    entry.columns[colKey] = selectedIds;
+    if ((colKey === 'travel' || colKey === 'sl') && notes) {
+      const storeKey = colKey === 'sl' ? 'leaveNotes' : 'travelNotes';
+      if (!entry.columns[storeKey]) entry.columns[storeKey] = {};
+      Object.assign(entry.columns[storeKey], notes);
+      Object.keys(entry.columns[storeKey]).forEach(pid => {
+        if (!selectedIds.includes(pid)) delete entry.columns[storeKey][pid];
+      });
+    }
+    renderEntries();
+  };
+
+  openModal('modal-picker');
+}
+
+// Division-aware picker: only shows personnel from the given division
+function openPickerForColumnDivision(entryId, colKey, divKey) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) return;
+  if (!entry.editMode) {
+    editingEntrySnapshot = JSON.parse(JSON.stringify(entry.columns));
+    entry.editMode = true;
+    renderEntries();
+  }
+
+  const div = DIVISIONS.find(d => d.key === divKey);
+  const col = COLUMNS.find(c => c.key === colKey);
+  document.getElementById('picker-title').textContent = `${div.icon} ${div.label} → ${col.icon} ${col.label}`;
+
+  const divPersonnel = state.personnel.filter(p => matchDivision(p.division) === div.label);
+  const assigned = entry.columns[colKey] || [];
+  const assignedElsewhere = {};
+  COLUMNS.forEach(c => {
+    if (c.key === colKey) return;
+    (entry.columns[c.key] || []).forEach(pid => { assignedElsewhere[pid] = c.label; });
+  });
+
+  const grid = document.getElementById('picker-grid');
+  grid.innerHTML = '';
+
+  if (divPersonnel.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--gray-400);font-size:13px;font-style:italic;">No personnel in this division yet.<br>Add them via the Personnel tab.</div>`;
+  }
+
+  divPersonnel.forEach(p => {
+    const isSelected = assigned.includes(p.id);
+    const isElsewhere = !isSelected && assignedElsewhere[p.id];
+    const div2 = document.createElement('div');
+    div2.className = 'picker-item' + (isSelected ? ' selected' : '') + (isElsewhere ? ' disabled-assigned' : '');
+    div2.dataset.pid = p.id;
+    if (isElsewhere) div2.dataset.assignedTo = assignedElsewhere[p.id];
+    const photoHTML = p.photo
+      ? `<div class="picker-photo"><img src="${p.photo}" alt="${p.name}"></div>`
+      : `<div class="picker-photo">${initials(p.name)}</div>`;
+    div2.innerHTML = `${photoHTML}<div class="picker-name">${p.name}</div>`;
+    if (!isElsewhere) {
+      div2.onclick = () => {
+        div2.classList.toggle('selected');
+        if (colKey === 'travel' || colKey === 'sl') refreshPickerTravelNotes(entry);
+      };
+    }
+    grid.appendChild(div2);
+  });
+
+  const travelSection = document.getElementById('picker-travel-notes');
+  if (colKey === 'travel' || colKey === 'sl') {
+    refreshPickerTravelNotes(entry);
+  } else {
+    travelSection.classList.remove('visible');
+  }
+
+  currentPickerCallback = (selectedIds, notes, isSL) => {
+    const otherDivIds = state.personnel
+      .filter(p => matchDivision(p.division) !== div.label)
+      .map(p => p.id);
+    const kept = (entry.columns[colKey] || []).filter(id => otherDivIds.includes(id));
+    entry.columns[colKey] = [...kept, ...selectedIds];
+    if ((colKey === 'travel' || colKey === 'sl') && notes) {
+      const storeKey = colKey === 'sl' ? 'leaveNotes' : 'travelNotes';
+      if (!entry.columns[storeKey]) entry.columns[storeKey] = {};
+      Object.assign(entry.columns[storeKey], notes);
+      Object.keys(entry.columns[storeKey]).forEach(pid => {
+        if (!entry.columns[colKey].includes(pid)) delete entry.columns[storeKey][pid];
+      });
+    }
+    renderEntries();
+  };
+
+  openModal('modal-picker');
+}
+
+function refreshPickerTravelNotes(entry) {
+  const travelSection = document.getElementById('picker-travel-notes');
+  const rowsDiv = document.getElementById('picker-travel-notes-rows');
+  const titleEl = document.getElementById('picker-travel-notes-title');
+  const selected = Array.from(document.querySelectorAll('#picker-grid .picker-item.selected'));
+  if (selected.length === 0) { travelSection.classList.remove('visible'); return; }
+  travelSection.classList.add('visible');
+  // Detect current col from picker title text
+  const isSL = (document.getElementById('picker-title')?.textContent || '').includes('LEAVE');
+  if (titleEl) titleEl.textContent = isSL ? '📋 Leave Type per Person' : '🚗 Official Business Destination';
+  const savedNotes = (entry && (isSL ? entry.columns.leaveNotes : entry.columns.travelNotes)) || {};
+  const existing = {};
+  rowsDiv.querySelectorAll('.picker-travel-note-input').forEach(inp => { existing[inp.dataset.pid] = inp.value; });
+  rowsDiv.innerHTML = '';
+  const placeholder = isSL ? 'Leave type (e.g. Sick, Vacation…)' : 'Destination…';
+  selected.forEach(el => {
+    const pid = el.dataset.pid;
+    const p = state.personnel.find(x => x.id === pid);
+    if (!p) return;
+    const row = document.createElement('div');
+    row.className = 'picker-travel-note-row';
+    const val = existing[pid] !== undefined ? existing[pid] : (savedNotes[pid] || '');
+    row.innerHTML = `
+      <div class="picker-travel-note-name">${p.name}</div>
+      <input class="picker-travel-note-input" type="text" data-pid="${pid}" placeholder="${placeholder}" value="${val.replace(/"/g,'&quot;')}">
+    `;
+    rowsDiv.appendChild(row);
+  });
+}
+
+function confirmPickerSelection() {
+  const selected = Array.from(document.querySelectorAll('#picker-grid .picker-item.selected'))
+    .map(el => el.dataset.pid);
+  const isSL = (document.getElementById('picker-title')?.textContent || '').includes('LEAVE');
+  const notes = {};
+  document.querySelectorAll('#picker-travel-notes-rows .picker-travel-note-input').forEach(inp => {
+    if (inp.value.trim()) notes[inp.dataset.pid] = inp.value.trim();
+  });
+  if (currentPickerCallback) currentPickerCallback(selected, notes, isSL);
+  closeModal('modal-picker');
+  showToast('Personnel assigned!');
+}
+
+// ===== PERSONNEL =====
+const DIVISIONS = [
+  { key: 'admin', label: 'ADMIN AND TRAINING DIVISION', icon: '🗂️' },
+  { key: 'research', label: 'RESEARCH AND PLANNING DIVISION', icon: '🔬' },
+  { key: 'operations', label: 'OPERATIONS AND WARNING DIVISION', icon: '🚨' },
+  { key: 'opd', label: 'OPD', icon: '🛡️' },
+];
+
+// Match a personnel's saved division string to one of the 3 divisions
+// Uses keyword matching so old/variant spellings still work
+function matchDivision(savedDivision) {
+  const d = (savedDivision || '').toUpperCase().trim();
+  if (!d) return null;
+  if (d.includes('ADMIN') || d.includes('TRAINING')) return 'ADMIN AND TRAINING DIVISION';
+  if (d.includes('RESEARCH') || d.includes('PLANNING')) return 'RESEARCH AND PLANNING DIVISION';
+  if (d.includes('OPERAT') || d.includes('WARNING')) return 'OPERATIONS AND WARNING DIVISION';
+  if (d.includes('OPD')) return 'OPD';
+  // Exact match fallback
+  for (const div of DIVISIONS) {
+    if (d === div.label) return div.label;
+  }
+  return '__UNASSIGNED__';
+}
+
+function renderPersonnelGrid() {
+  const container = document.getElementById('personnel-divisions');
+  container.innerHTML = '';
+
+  const query = (document.getElementById('personnel-search')?.value || '').trim().toLowerCase();
+
+  const filterPersonnel = (list) => query
+    ? list.filter(p => p.name.toLowerCase().includes(query) || (p.role || '').toLowerCase().includes(query))
+    : list;
+
+  // Track which personnel fall into a known division
+  const matched = new Set();
+
+  DIVISIONS.forEach(div => {
+    const allDivPersonnel = state.personnel.filter(p => {
+      const m = matchDivision(p.division);
+      return m === div.label;
+    });
+    allDivPersonnel.forEach(p => matched.add(p.id));
+    const divPersonnel = filterPersonnel(allDivPersonnel);
+
+    // Skip section entirely if search returned no results
+    if (query && divPersonnel.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'division-section';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'division-header';
+    header.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">${div.icon}</span>
+        <span class="division-title">${div.label}</span>
+        <span class="division-count">${divPersonnel.length}${query ? ' result(s)' : ' personnel'}</span>
+      </div>
+      <button class="btn-add-personnel-div" onclick="openAddPersonnelModal('${div.label}')">＋ Add Personnel</button>
+    `;
+    section.appendChild(header);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'division-body';
+
+    if (divPersonnel.length === 0) {
+      body.innerHTML = `<div class="division-empty">No personnel in this division yet.</div>`;
+    } else {
+      const grid = document.createElement('div');
+      grid.className = 'personnel-grid';
+      divPersonnel.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'personnel-card';
+        card.onclick = () => openEditPersonnelModal(p.id);
+        const photoHTML = p.photo
+          ? `<div class="personnel-card-photo"><img src="${p.photo}" alt="${p.name}"></div>`
+          : `<div class="personnel-card-photo">${initials(p.name)}</div>`;
+        card.innerHTML = `
+          <button class="personnel-card-remove-btn" title="Remove personnel">✕</button>
+          ${photoHTML}
+          <div class="personnel-card-name">${p.name}</div>
+          <div class="personnel-card-role">${p.role || ''}</div>
+        `;
+        card.querySelector('.personnel-card-remove-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          removePersonnel(p.id);
+        });
+        grid.appendChild(card);
+      });
+      body.appendChild(grid);
+    }
+
+    section.appendChild(body);
+    container.appendChild(section);
+  }); // end DIVISIONS.forEach
+
+  // Show no-results message if search active and nothing rendered
+  if (query && container.children.length === 0 && unassigned.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>No personnel found for "<strong>${query}</strong>".</p></div>`;
+  }
+
+  // ===== UNASSIGNED / fallback section =====
+  const unassigned = filterPersonnel(state.personnel.filter(p => !matched.has(p.id)));
+  if (unassigned.length > 0) {
+    const section = document.createElement('div');
+    section.className = 'division-section';
+    const header = document.createElement('div');
+    header.className = 'division-header';
+    header.style.background = 'linear-gradient(135deg, #909090 0%, #BBBBBB 100%)';
+    header.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">📁</span>
+        <span class="division-title" style="color:#fff;">UNASSIGNED / OTHER</span>
+        <span class="division-count">${unassigned.length} personnel</span>
+      </div>
+    `;
+    section.appendChild(header);
+    const body = document.createElement('div');
+    body.className = 'division-body';
+    const grid = document.createElement('div');
+    grid.className = 'personnel-grid';
+    unassigned.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'personnel-card';
+      card.onclick = () => openEditPersonnelModal(p.id);
+      const photoHTML = p.photo
+        ? `<div class="personnel-card-photo"><img src="${p.photo}" alt="${p.name}"></div>`
+        : `<div class="personnel-card-photo">${initials(p.name)}</div>`;
+      card.innerHTML = `
+        <button class="personnel-card-remove-btn" title="Remove personnel">✕</button>
+        ${photoHTML}
+        <div class="personnel-card-name">${p.name}</div>
+        <div class="personnel-card-role">${p.role || ''}</div>
+        <div style="font-size:10px;color:var(--gray-400);margin-top:2px;">${p.division || 'No division set'}</div>
+      `;
+      card.querySelector('.personnel-card-remove-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        removePersonnel(p.id);
+      });
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+    section.appendChild(body);
+    container.appendChild(section);
+  }
+}
+
+async function removePersonnel(id) {
+  const p = state.personnel.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm(`Remove ${p.name} from personnel?`)) return;
+  try {
+    const { error } = await sbClient.from('personnel').delete().eq('id', id);
+    if (error) throw error;
+    state.personnel = state.personnel.filter(x => x.id !== id);
+    // Remove from all entry columns
+    for (const entry of state.entries) {
+      let changed = false;
+      COLUMNS.forEach(col => {
+        if ((entry.columns[col.key] || []).includes(id)) {
+          entry.columns[col.key] = entry.columns[col.key].filter(pid => pid !== id);
+          changed = true;
+        }
+      });
+      if (changed) {
+        await sbClient.from('entries').update({ columns: entry.columns }).eq('id', entry.id);
+      }
+    }
+    renderPersonnelGrid();
+    renderEntries();
+    showToast(`${p.name} removed.`, '🗑');
+  } catch(e) {
+    showToast('Error removing personnel: ' + e.message, '❌');
+  }
+}
+
+function openAddPersonnelModal(presetDivision = '') {
+  editingPersonnelId = null;
+  modalPhotoData = null;
+  document.getElementById('personnel-modal-title').textContent = '➕ Add Personnel';
+  document.getElementById('edit-personnel-id').value = '';
+  document.getElementById('personnel-name').value = '';
+  document.getElementById('personnel-role').value = '';
+  document.getElementById('personnel-division').value = presetDivision;
+  document.getElementById('modal-photo-preview').innerHTML = '👤';
+  openModal('modal-personnel');
+}
+
+function openEditPersonnelModal(id) {
+  const p = state.personnel.find(x => x.id === id);
+  if (!p) return;
+  editingPersonnelId = id;
+  modalPhotoData = p.photo || null;
+  document.getElementById('personnel-modal-title').textContent = '✏️ Edit Personnel';
+  document.getElementById('edit-personnel-id').value = id;
+  document.getElementById('personnel-name').value = p.name;
+  document.getElementById('personnel-role').value = p.role || '';
+  document.getElementById('personnel-division').value = p.division || '';
+  const prev = document.getElementById('modal-photo-preview');
+  prev.innerHTML = p.photo ? `<img src="${p.photo}" alt="">` : initials(p.name);
+  openModal('modal-personnel');
+}
+
+async function savePersonnel() {
+  const name = document.getElementById('personnel-name').value.trim().toUpperCase();
+  const role = document.getElementById('personnel-role').value.trim();
+  const division = document.getElementById('personnel-division').value.trim();
+  if (!name) { showToast('Please enter a name.', '⚠️'); return; }
+
+  try {
+    if (editingPersonnelId) {
+      const updates = { name, role, division, photo: modalPhotoData || null };
+      const { error } = await sbClient.from('personnel').update(updates).eq('id', editingPersonnelId);
+      if (error) throw error;
+      const p = state.personnel.find(x => x.id === editingPersonnelId);
+      if (p) Object.assign(p, updates);
+      showToast('Personnel updated!');
+    } else {
+      const newP = { name, role, division, photo: modalPhotoData || null };
+      const { data, error } = await sbClient.from('personnel').insert([newP]).select().single();
+      if (error) throw error;
+      state.personnel.push(data);
+      showToast('Personnel added!');
+    }
+    closeModal('modal-personnel');
+    renderPersonnelGrid();
+    renderEntries();
+  } catch(e) {
+    showToast('Error saving personnel: ' + e.message, '❌');
+  }
+}
+
+function triggerPhotoUpload() {
+  document.getElementById('photo-file-input').click();
+}
+
+function handlePhotoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  // Resize to max 400px to keep storage small
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 400;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      modalPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+      document.getElementById('modal-photo-preview').innerHTML = `<img src="${modalPhotoData}" alt="photo">`;
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto() {
+  modalPhotoData = null;
+  document.getElementById('modal-photo-preview').innerHTML = '👤';
+  document.getElementById('photo-file-input').value = '';
+  showToast('Photo removed.', '🗑');
+}
+
+// ===== HISTORY =====
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const query = (document.getElementById('history-search')?.value || '').trim().toLowerCase();
+
+  // Show one item per unique entry (no download/edit duplicates), newest first
+  let sortedEntries = [...state.entries].sort((a, b) => (b.date > a.date ? 1 : -1));
+
+  // Filter by date string or personnel name
+  if (query) {
+    sortedEntries = sortedEntries.filter(entry => {
+      // Match date label
+      if (fmtDate(entry.date).toLowerCase().includes(query)) return true;
+      // Match raw date (e.g. "2025-05")
+      if (entry.date.toLowerCase().includes(query)) return true;
+      // Match any assigned personnel name
+      const allAssigned = [];
+      COLUMNS.forEach(col => {
+        (entry.columns[col.key] || []).forEach(pid => {
+          if (!allAssigned.includes(pid)) allAssigned.push(pid);
+        });
+      });
+      return allAssigned.some(pid => {
+        const p = state.personnel.find(x => x.id === pid);
+        return p && p.name.toLowerCase().includes(query);
+      });
+    });
+  }
+
+  if (sortedEntries.length === 0) {
+    list.innerHTML = query
+      ? `<div class="empty-state"><div class="empty-icon">🔍</div><p>No history found for "<strong>${query}</strong>".</p></div>`
+      : `<div class="empty-state"><div class="empty-icon">📜</div><p>No history yet. Start adding entries!</p></div>`;
+    return;
+  }
+
+  list.innerHTML = '';
+
+  sortedEntries.forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+
+    // Count total assigned personnel
+    const allAssigned = [];
+    COLUMNS.forEach(col => {
+      (entry.columns[col.key] || []).forEach(pid => {
+        if (!allAssigned.includes(pid)) allAssigned.push(pid);
+      });
+    });
+
+    // Personnel photo previews (up to 5)
+    const shown = allAssigned.slice(0, 5);
+    let personnelPreview = shown.map(pid => {
+      const p = state.personnel.find(x => x.id === pid);
+      if (!p) return '';
+      return p.photo
+        ? `<img src="${p.photo}" title="${p.name}" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1.5px solid var(--yellow);">`
+        : `<div title="${p.name}" style="width:24px;height:24px;border-radius:4px;background:var(--blue-pale);border:1.5px solid var(--yellow);display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--blue-dark);">${initials(p.name)}</div>`;
+    }).join('');
+    if (allAssigned.length > 5) {
+      personnelPreview += `<div style="width:24px;height:24px;border-radius:4px;background:var(--gray-200);display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--gray-600);">+${allAssigned.length - 5}</div>`;
+    }
+
+    const staffCount = allAssigned.length;
+
+    div.innerHTML = `
+      <div class="history-icon">📍</div>
+      <div class="history-content">
+        <div class="history-action">${fmtDate(entry.date)}</div>
+        <div class="history-detail">${staffCount} staff assigned</div>
+        ${personnelPreview ? `<div style="display:flex;gap:3px;margin-top:5px;flex-wrap:wrap;">${personnelPreview}</div>` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+        <div class="history-item-arrow">›</div>
+      </div>
+    `;
+    div.onclick = () => openHistoryWhereabouts(entry.id);
+    list.appendChild(div);
+  });
+}
+
+function openHistoryWhereabouts(entryId) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) return;
+  document.getElementById('history-wb-modal-date').textContent = fmtDate(entry.date);
+  const body = document.getElementById('history-wb-modal-body');
+  body.innerHTML = '';
+
+  const travelNotes = entry.columns.travelNotes || {};
+  const leaveNotes  = entry.columns.leaveNotes  || {};
+
+  DIVISIONS.forEach(div => {
+    const divPersonnel = state.personnel.filter(p => matchDivision(p.division) === div.label);
+
+    const block = document.createElement('div');
+    block.className = 'div-wb-block';
+
+    const labelRow = document.createElement('div');
+    labelRow.className = 'div-wb-label';
+    labelRow.innerHTML = `<span>${div.icon}</span> ${div.label}`;
+    block.appendChild(labelRow);
+
+    const table = document.createElement('div');
+    table.className = 'div-wb-table';
+
+    COLUMNS.forEach(col => {
+      const colEl = document.createElement('div');
+      colEl.className = 'div-wb-col';
+
+      const header = document.createElement('div');
+      header.className = 'div-wb-col-header';
+      header.innerHTML = `${col.icon} ${col.label}`;
+      colEl.appendChild(header);
+
+      const colBody = document.createElement('div');
+      colBody.className = 'div-wb-col-body';
+      if (col.threeCol) colBody.style.gridTemplateColumns = '1fr 1fr 1fr';
+
+      const colIds = (entry.columns[col.key] || []).filter(pid => divPersonnel.some(p => p.id === pid));
+
+      if (colIds.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'div-wb-empty-col';
+        empty.style.gridColumn = '1 / -1';
+        empty.textContent = '—';
+        colBody.appendChild(empty);
+      }
+
+      colIds.forEach(pid => {
+        const p = state.personnel.find(x => x.id === pid);
+        if (!p) return;
+        const card = document.createElement('div');
+        card.className = 'wb-person-card';
+        const photoHTML = p.photo
+          ? `<div class="wb-person-photo"><img src="${p.photo}" alt="${p.name}"></div>`
+          : `<div class="wb-person-photo">${initials(p.name)}</div>`;
+        const noteVal = col.key === 'sl' ? leaveNotes[pid] : col.key === 'travel' ? travelNotes[pid] : null;
+        const noteIcon = col.key === 'sl' ? '📋' : '🚗';
+        const noteHTML = noteVal ? `<div class="wb-travel-note">${noteIcon} ${noteVal}</div>` : '';
+        card.innerHTML = `${photoHTML}<div class="wb-person-name">${p.name}</div>${noteHTML}`;
+        colBody.appendChild(card);
+      });
+
+      colEl.appendChild(colBody);
+      table.appendChild(colEl);
+    });
+
+    // Notes column
+    const notesColEl = document.createElement('div');
+    notesColEl.className = 'div-wb-col';
+    const notesHeader = document.createElement('div');
+    notesHeader.className = 'div-wb-col-header';
+    notesHeader.innerHTML = '📌 NOTES';
+    notesColEl.appendChild(notesHeader);
+    const notesBody = document.createElement('div');
+    notesBody.className = 'div-wb-col-body';
+    notesBody.style.display = 'block';
+    notesBody.style.padding = '8px';
+    const divNotesVal = entry.columns[`notes_${div.key}`] || '';
+    notesBody.innerHTML = divNotesVal
+      ? `<div class="wb-notes-text" style="font-size:10px;">${divNotesVal}</div>`
+      : `<div class="div-wb-empty-col">—</div>`;
+    notesColEl.appendChild(notesBody);
+    table.appendChild(notesColEl);
+
+    block.appendChild(table);
+    body.appendChild(block);
+  });
+
+  openModal('modal-history-wb');
+}
+
+// ===== PDF DOWNLOAD =====
+async function downloadEntryPDF(id) {
+  document.querySelectorAll('.entry-dropdown').forEach(d => d.classList.remove('open'));
+  const entry = state.entries.find(e => e.id === id);
+  if (!entry) return;
+  showToast('Generating PDF…', '⏳');
+
+  const printArea = document.getElementById('pdf-print-area');
+  printArea.innerHTML = '';
+  printArea.style.cssText = 'position:fixed;left:0;top:0;background:#fff;padding:14px 18px;width:1400px;font-family:Arial,sans-serif;';
+
+  // ── Header ──
+  const hdrWrap = document.createElement('div');
+  hdrWrap.style.cssText = 'text-align:center;margin-bottom:14px;';
+  hdrWrap.innerHTML = `
+    <div style="font-size:15px;font-weight:900;color:#4A4A4A;letter-spacing:1px;text-transform:uppercase;">
+      PDRRMO Staff Daily Monitoring
+    </div>
+    <div style="font-size:12px;color:#6B6B6B;font-weight:600;margin-top:3px;">
+      Daily Staff Whereabouts &nbsp;|&nbsp; ${fmtDate(entry.date)}
+    </div>
+    <div style="height:2px;background:linear-gradient(90deg,#4A4A4A,#FF6B2B);border-radius:2px;margin-top:10px;"></div>
+  `;
+  printArea.appendChild(hdrWrap);
+
+  // ── Helper: build one division table ──
+  function buildDivisionTable(div) {
+    const divPersonnel = state.personnel.filter(p => matchDivision(p.division) === div.label);
+    const travelNotes  = entry.columns.travelNotes || {};
+    const leaveNotes   = entry.columns.leaveNotes  || {};
+    const divNotesVal  = entry.columns[`notes_${div.key}`] || '';
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'margin-bottom:7px;border:1.5px solid #4A4A4A;border-radius:6px;overflow:hidden;';
+
+    const bar = document.createElement('div');
+    bar.style.cssText = 'background:#4A4A4A;padding:5px 12px;display:flex;align-items:center;gap:8px;';
+    bar.innerHTML = `<span style="font-size:13px;">${div.icon}</span><span style="font-family:Arial,sans-serif;font-size:11px;font-weight:900;color:#FF6B2B;letter-spacing:1px;text-transform:uppercase;">${div.label}</span>`;
+    wrapper.appendChild(bar);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr) 1.3fr;';
+
+    COLUMNS.forEach(col => {
+      const colDiv = document.createElement('div');
+      colDiv.style.cssText = 'border-right:1.5px solid #EBEBEB;';
+
+      const ch = document.createElement('div');
+      ch.style.cssText = 'background:#FF6B2B;padding:5px 4px;text-align:center;font-weight:800;font-size:10px;color:#3A3A3A;border-bottom:1.5px solid #E85A1A;letter-spacing:0.4px;';
+      ch.textContent = col.label;
+      colDiv.appendChild(ch);
+
+      const body = document.createElement('div');
+      body.style.cssText = `padding:5px 4px;display:grid;grid-template-columns:${col.threeCol ? '1fr 1fr 1fr' : '1fr 1fr'};gap:4px;align-items:start;justify-items:center;min-height:60px;`;
+
+      const colIds = (entry.columns[col.key] || []).filter(pid => divPersonnel.some(p => p.id === pid));
+      if (colIds.length === 0) {
+        const dash = document.createElement('div');
+        dash.style.cssText = 'font-size:9px;color:#BBBBBB;font-style:italic;padding-top:6px;grid-column:1/-1;';
+        dash.textContent = '—';
+        body.appendChild(dash);
+      }
+
+      colIds.forEach(pid => {
+        const p = state.personnel.find(x => x.id === pid);
+        if (!p) return;
+        const pWrap = document.createElement('div');
+        pWrap.style.cssText = 'text-align:center;';
+
+        const photoSize = col.threeCol ? '34px' : '40px';
+        const fontSize  = col.threeCol ? '11px' : '12px';
+        const nameWidth = col.threeCol ? '44px' : '54px';
+        const nameFSize = col.threeCol ? '6.5px' : '7px';
+
+        if (p.photo) {
+          const img = document.createElement('img');
+          img.src = p.photo;
+          img.style.cssText = `width:${photoSize};height:${photoSize};border-radius:5px;object-fit:cover;border:2px solid #6B6B6B;display:block;margin:0 auto 2px;`;
+          img.crossOrigin = 'anonymous';
+          pWrap.appendChild(img);
+        } else {
+          const initDiv = document.createElement('div');
+          initDiv.style.cssText = `width:${photoSize};height:${photoSize};border-radius:5px;background:#FFF4EE;border:2px solid #6B6B6B;display:flex;align-items:center;justify-content:center;font-size:${fontSize};font-weight:700;color:#6B6B6B;margin:0 auto 2px;`;
+          initDiv.textContent = initials(p.name);
+          pWrap.appendChild(initDiv);
+        }
+
+        const nameDiv = document.createElement('div');
+        nameDiv.style.cssText = `font-size:${nameFSize};font-weight:700;color:#3A3A3A;text-transform:uppercase;max-width:${nameWidth};word-break:break-word;line-height:1.3;`;
+        nameDiv.textContent = p.name;
+        pWrap.appendChild(nameDiv);
+
+        // Note tag (travel or leave)
+        const noteVal = col.key === 'sl' ? leaveNotes[pid] : (col.key === 'travel' ? travelNotes[pid] : null);
+        if (noteVal) {
+          const tn = document.createElement('div');
+          const noteIcon = col.key === 'sl' ? '📋' : '🚗';
+          tn.style.cssText = 'font-size:6px;color:#6B6B6B;background:#FFF4EE;border:1px solid #BBBBBB;border-radius:3px;padding:1px 3px;margin-top:2px;max-width:54px;word-break:break-word;';
+          tn.textContent = noteIcon + ' ' + noteVal;
+          pWrap.appendChild(tn);
+        }
+
+        body.appendChild(pWrap);
+      });
+
+      colDiv.appendChild(body);
+      grid.appendChild(colDiv);
+    });
+
+    // Notes column
+    const notesCol = document.createElement('div');
+    notesCol.style.cssText = 'border-left:1.5px solid #EBEBEB;';
+    const notesHdr = document.createElement('div');
+    notesHdr.style.cssText = 'background:#FF6B2B;padding:5px 4px;text-align:center;font-weight:800;font-size:10px;color:#3A3A3A;border-bottom:1.5px solid #E85A1A;letter-spacing:0.4px;';
+    notesHdr.textContent = 'NOTES';
+    notesCol.appendChild(notesHdr);
+    const notesBody = document.createElement('div');
+    notesBody.style.cssText = 'padding:5px 6px;min-height:60px;font-size:9px;color:#3A3A3A;white-space:pre-wrap;word-break:break-word;line-height:1.5;';
+    notesBody.textContent = divNotesVal || '';
+    notesCol.appendChild(notesBody);
+    grid.appendChild(notesCol);
+
+    wrapper.appendChild(grid);
+    return wrapper;
+  }
+
+  // ── Render all 3 divisions ──
+  DIVISIONS.forEach(div => printArea.appendChild(buildDivisionTable(div)));
+
+  // ── Footer ──
+  const footer = document.createElement('div');
+  footer.style.cssText = 'margin-top:6px;text-align:right;font-size:8px;color:#BBBBBB;';
+  footer.textContent = `Generated: ${new Date().toLocaleString()}`;
+  printArea.appendChild(footer);
+
+  // ── Render to PDF (landscape, tight margins) ──
+  try {
+    await new Promise(r => setTimeout(r, 400));
+    const canvas = await html2canvas(printArea, { scale: 2, useCORS: true, backgroundColor: '#fff' });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const imgData = canvas.toDataURL('image/png');
+    const pageW = pdf.internal.pageSize.getWidth();  // 297mm
+    const pageH = pdf.internal.pageSize.getHeight(); // 210mm
+    const margin = 4;
+    const usableW = pageW - margin * 2;
+    const usableH = pageH - margin * 2;
+    const ratio = canvas.width / canvas.height;
+    let w = usableW, h = w / ratio;
+    if (h > usableH) { h = usableH; w = h * ratio; }
+    pdf.addImage(imgData, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h);
+    pdf.save(`PDRRMO-Whereabouts-${entry.date}.pdf`);
+    showToast('PDF downloaded!', '📄');
+  } catch(err) {
+    console.error(err);
+    showToast('PDF generation failed: ' + err.message, '❌');
+  }
+
+  printArea.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:24px;width:1100px;';
+  printArea.innerHTML = '';
+}
+
+// ===== INIT =====
+async function init() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('new-entry-date').value = today;
+  await initSupabase();
+}
+
+init();
+</script>
+</body>
+</html>
