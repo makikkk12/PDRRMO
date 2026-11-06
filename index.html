@@ -3,47 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDRRMO Staff Tracking</title>
+<title>PDRRMO STAFF DAILY MONITORING</title>
+<meta name="description" content="PDRRMO staff daily whereabouts monitoring">
+<meta name="theme-color" content="#4A4A4A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PDRRMO Monitoring">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<!-- Supabase JS -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <link rel="stylesheet" href="styles.css">
-</style>
+<link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
 <!-- Loading Screen -->
 <div id="loading-screen">
   <div class="spinner"></div>
-  <div class="load-title">PDRRMO Staff Tracking</div>
+  <div class="load-title">PDRRMO STAFF DAILY MONITORING</div>
   <div class="load-sub">Connecting to database…</div>
-</div>
-
-<!-- Config Banner (shown if no Supabase credentials) -->
-<div id="config-banner">
-  <div class="config-card">
-    <h2>🔧 Setup Required</h2>
-    <p>Enter your Supabase project credentials below. You only need to do this once — they'll be saved in your browser.</p>
-    <div class="form-group">
-      <label class="form-label">Supabase Project URL</label>
-      <input type="text" class="form-input" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Supabase Anon Key</label>
-      <input type="text" class="form-input" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIs...">
-    </div>
-    <button class="config-save-btn" onclick="saveConfig()">Connect to Supabase →</button>
-    <div class="config-note">Find these in your Supabase project → Settings → API</div>
-  </div>
 </div>
 
 <!-- ===== SIDEBAR ===== -->
 <div id="sidebar">
   <div class="sidebar-header">
     <div class="org-name">PDRRMO</div>
-    <div class="app-title">Staff<br>Tracking</div>
+    <div class="app-title">Staff Daily<br>Monitoring</div>
     <div class="db-status">
       <div class="db-dot" id="db-dot"></div>
       <span id="db-status-text">Connecting…</span>
@@ -64,12 +52,18 @@
       <span class="nav-icon">📋</span><span class="nav-label"> History</span>
     </div>
   </div>
+
+  <div class="sidebar-footer">
+    <button class="install-btn" id="install-btn" onclick="installApp()" hidden>
+      <span class="nav-icon">⬇️</span><span class="nav-label"> Install App</span>
+    </button>
+  </div>
 </div>
 
 <!-- ===== MAIN ===== -->
 <div id="main">
   <div class="topbar">
-    <div class="topbar-title">PDRRMO <span>Staff Tracking</span></div>
+    <div class="topbar-title">PDRRMO <span>Staff Daily Monitoring</span></div>
     <button class="btn-add-entry" onclick="openNewEntryModal()">
       <span>＋</span> New Entry
     </button>
@@ -88,12 +82,23 @@
 
     <!-- PERSONNEL VIEW -->
     <div id="view-personnel" class="view">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="personnel-search" class="search-input" placeholder="Search personnel by name, position, or division…" autocomplete="off" oninput="renderPersonnelGrid()">
+        <button class="search-clear" onclick="clearSearch('personnel-search', renderPersonnelGrid)" title="Clear">✕</button>
+      </div>
       <div id="personnel-divisions"></div>
     </div>
 
     <!-- HISTORY VIEW -->
     <div id="view-history" class="view">
-      <div class="section-label">📋 Activity History</div>
+      <div class="section-label">📍 Whereabouts History</div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="history-search" class="search-input" placeholder="Search by date, staff name, destination, leave type, or notes…" autocomplete="off" oninput="renderHistory()">
+        <button class="search-clear" onclick="clearSearch('history-search', renderHistory)" title="Clear">✕</button>
+      </div>
+      <div class="search-count" id="history-search-count"></div>
       <div class="history-list" id="history-list">
         <div class="empty-state">
           <div class="empty-icon">📜</div>
@@ -186,6 +191,7 @@
           <option value="ADMIN AND TRAINING DIVISION">Admin and Training Division</option>
           <option value="RESEARCH AND PLANNING DIVISION">Research and Planning Division</option>
           <option value="OPERATIONS AND WARNING DIVISION">Operations and Warning Division</option>
+          <option value="OPD">OPD</option>
         </select>
       </div>
     </div>
@@ -200,9 +206,12 @@
 
 <div class="modal-overlay" id="modal-history-wb">
   <div class="modal history-wb-modal">
-    <div class="modal-header">
-      <div class="modal-title" id="history-wb-modal-title">📍 Whereabouts</div>
-      <button class="modal-close" onclick="closeModal('modal-history-wb')">✕</button>
+    <div class="modal-header" style="flex-direction:column;align-items:flex-start;gap:2px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        <div class="modal-title">📍 Daily Whereabouts</div>
+        <button class="modal-close" onclick="closeModal('modal-history-wb')">✕</button>
+      </div>
+      <div class="history-wb-date-badge" id="history-wb-modal-date"></div>
     </div>
     <div class="modal-body" id="history-wb-modal-body"></div>
     <div class="modal-footer">
@@ -213,10 +222,31 @@
 
 <!-- Toast -->
 <div id="toast"></div>
+
+<!-- App update banner -->
+<div id="update-banner" hidden>
+  <span>🔄 A new version of the app is ready.</span>
+  <button onclick="applyUpdate()">Update now</button>
+</div>
 <!-- PDF Print area -->
 <div id="pdf-print-area"></div>
 
-  <script src="config.js"></script>
-  <script src="script.js"></script>
+<!-- Libraries (stored locally so the app works offline) -->
+<script src="vendor/supabase.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+
+<!-- App scripts (order matters) -->
+<script src="js/config.js"></script>
+<script src="js/constants.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/offline-store.js"></script>
+<script src="js/db.js"></script>
+<script src="js/whereabouts.js"></script>
+<script src="js/personnel.js"></script>
+<script src="js/history.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
