@@ -139,8 +139,11 @@ async function downloadEntryPDF(id) {
     await new Promise(r => setTimeout(r, 400));
     const canvas = await html2canvas(printArea, { scale: 2, useCORS: true, backgroundColor: '#fff' });
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const imgData = canvas.toDataURL('image/png');
+    // compress: true shrinks the PDF's internal data.
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
+    // JPEG instead of PNG: a PNG snapshot of this page (with staff photos) is stored
+    // almost uncompressed inside the PDF, which made files 20 MB+. JPEG keeps it ~1 MB.
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
     const pageW = pdf.internal.pageSize.getWidth();  // 297mm
     const pageH = pdf.internal.pageSize.getHeight(); // 210mm
     const margin = 4;
@@ -149,7 +152,7 @@ async function downloadEntryPDF(id) {
     const ratio = canvas.width / canvas.height;
     let w = usableW, h = w / ratio;
     if (h > usableH) { h = usableH; w = h * ratio; }
-    pdf.addImage(imgData, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h);
+    pdf.addImage(imgData, 'JPEG', (pageW - w) / 2, (pageH - h) / 2, w, h, undefined, 'FAST');
     pdf.save(`PDRRMO-Whereabouts-${entry.date}.pdf`);
     showToast('PDF downloaded!', '📄');
   } catch(err) {
