@@ -1,5 +1,19 @@
 # Netlify settings, read automatically when the site deploys from GitHub.
-# No build step: the files are published exactly as they are in this folder.
+#
+# The Supabase key is NOT stored in GitHub. js/config.js holds the
+# placeholder "your-anon-key-here"; on every deploy the command below
+# swaps it for the SUPABASE_KEY environment variable set in
+# Netlify → Site configuration → Environment variables.
+# If that variable is missing, the deploy stops instead of publishing a broken app.
 [build]
   publish = "."
-  command = ""
+  command = '''
+    if [ -z "$SUPABASE_KEY" ]; then echo "ERROR: set SUPABASE_KEY in Netlify > Site configuration > Environment variables"; exit 1; fi
+    sed -i "s|your-anon-key-here|$SUPABASE_KEY|" js/config.js
+    grep -q "your-anon-key-here" js/config.js && { echo "ERROR: key was not inserted into js/config.js"; exit 1; } || true
+  '''
+
+[build.environment]
+  # The publishable key is meant to appear in the published files,
+  # so Netlify's secret scanner should not block the deploy because of it.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_KEY"

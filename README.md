@@ -5,8 +5,19 @@ The site deploys automatically from GitHub. In VS Code: open **Source Control**
 (Ctrl+Shift+G), type a short message describing the change, click **Commit**,
 then **Sync Changes**. Netlify publishes the new version within about a minute.
 
-`netlify.toml` tells Netlify there is no build step: it publishes this folder as-is.
 `index.html` must stay at the top level, next to `sw.js`.
+
+## The Supabase key
+The key is **not** stored in GitHub. In the repo, `js/config.js` has the
+placeholder `your-anon-key-here`.
+- **Netlify:** the key is saved under Site configuration → Environment variables
+  as `SUPABASE_KEY`. `netlify.toml` puts it into `js/config.js` on every deploy.
+- **Your computer:** paste the real key into `js/config.js` so Live Server works, then run
+  `git update-index --skip-worktree js/config.js` once. Git then ignores your
+  local copy, so the key can't be committed by accident.
+  To change `config.js` for real later, run
+  `git update-index --no-skip-worktree js/config.js` first, and put the placeholder back
+  before committing.
 
 ## How updates reach users
 - The open app checks Netlify for changed files every 2 minutes, and whenever
