@@ -1,0 +1,5 @@
+# Netlify settings, read automatically when the site deploys from GitHub.
+# No build step: the files are published exactly as they are in this folder.
+[build]
+  publish = "."
+  command = ""

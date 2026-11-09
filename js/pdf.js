@@ -14,10 +14,10 @@ async function downloadEntryPDF(id) {
   hdrWrap.style.cssText = 'text-align:center;margin-bottom:14px;';
   hdrWrap.innerHTML = `
     <div style="font-size:15px;font-weight:900;color:#4A4A4A;letter-spacing:1px;text-transform:uppercase;">
-      PDRRMO Staff Daily Monitoring
+      Provincial Disaster Risk Reduction and Management Office
     </div>
     <div style="font-size:12px;color:#6B6B6B;font-weight:600;margin-top:3px;">
-      Daily Staff Whereabouts &nbsp;|&nbsp; ${fmtDate(entry.date)}
+      ${fmtDate(entry.date)}
     </div>
     <div style="height:2px;background:linear-gradient(90deg,#4A4A4A,#FF6B2B);border-radius:2px;margin-top:10px;"></div>
   `;

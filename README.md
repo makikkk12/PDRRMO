@@ -1,13 +1,12 @@
 # PDRRMO Staff Daily Monitoring
 
-## Before deploying
-The Supabase key is not stored in this repo. Open `js/config.js` and replace
-`your-anon-key-here` with your project's publishable key
-(Supabase → Project Settings → API Keys).
-
 ## Deploying to Netlify
-Drag this whole folder (or the zip's contents) onto your site's **Deploys** page.
-`index.html` must be at the top level, next to `sw.js`.
+The site deploys automatically from GitHub. In VS Code: open **Source Control**
+(Ctrl+Shift+G), type a short message describing the change, click **Commit**,
+then **Sync Changes**. Netlify publishes the new version within about a minute.
+
+`netlify.toml` tells Netlify there is no build step: it publishes this folder as-is.
+`index.html` must stay at the top level, next to `sw.js`.
 
 ## How updates reach users
 - The open app checks Netlify for changed files every 2 minutes, and whenever
